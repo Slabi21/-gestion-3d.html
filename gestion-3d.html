@@ -1,0 +1,1856 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Taller 3D — Gestión</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxOTIgMTkyIj4KPHJlY3Qgd2lkdGg9IjE5MiIgaGVpZ2h0PSIxOTIiIHJ4PSI0MCIgZmlsbD0iIzFiMWQyMSIvPgo8ZyBzdHJva2U9IiNmZjdhMjkiIHN0cm9rZS13aWR0aD0iNyIgZmlsbD0ibm9uZSI+CjxlbGxpcHNlIGN4PSI5NiIgY3k9IjY0IiByeD0iNDgiIHJ5PSIxNyIvPgo8ZWxsaXBzZSBjeD0iOTYiIGN5PSI4OCIgcng9IjQ4IiByeT0iMTciLz4KPGVsbGlwc2UgY3g9Ijk2IiBjeT0iMTEyIiByeD0iNDgiIHJ5PSIxNyIvPgo8L2c+Cjx0ZXh0IHg9Ijk2IiB5PSIxNjAiIGZvbnQtZmFtaWx5PSJtb25vc3BhY2Usc2Fucy1zZXJpZiIgZm9udC1zaXplPSIzNiIgZm9udC13ZWlnaHQ9IjcwMCIgZmlsbD0iI2VlZjBmMiIgdGV4dC1hbmNob3I9Im1pZGRsZSI+M0Q8L3RleHQ+Cjwvc3ZnPg==">
+<link rel="apple-touch-icon" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxOTIgMTkyIj4KPHJlY3Qgd2lkdGg9IjE5MiIgaGVpZ2h0PSIxOTIiIHJ4PSI0MCIgZmlsbD0iIzFiMWQyMSIvPgo8ZyBzdHJva2U9IiNmZjdhMjkiIHN0cm9rZS13aWR0aD0iNyIgZmlsbD0ibm9uZSI+CjxlbGxpcHNlIGN4PSI5NiIgY3k9IjY0IiByeD0iNDgiIHJ5PSIxNyIvPgo8ZWxsaXBzZSBjeD0iOTYiIGN5PSI4OCIgcng9IjQ4IiByeT0iMTciLz4KPGVsbGlwc2UgY3g9Ijk2IiBjeT0iMTEyIiByeD0iNDgiIHJ5PSIxNyIvPgo8L2c+Cjx0ZXh0IHg9Ijk2IiB5PSIxNjAiIGZvbnQtZmFtaWx5PSJtb25vc3BhY2Usc2Fucy1zZXJpZiIgZm9udC1zaXplPSIzNiIgZm9udC13ZWlnaHQ9IjcwMCIgZmlsbD0iI2VlZjBmMiIgdGV4dC1hbmNob3I9Im1pZGRsZSI+M0Q8L3RleHQ+Cjwvc3ZnPg==">
+<meta name="theme-color" content="#1b1d21">
+<style>
+  :root{
+    --bg: #1b1d21;
+    --surface: #24272c;
+    --surface-2: #2c3037;
+    --line: #383d45;
+    --ink: #eef0f2;
+    --ink-dim: #9aa1ab;
+    --accent: #ff7a29;      /* filamento naranja */
+    --accent-ink: #1b1d21;
+    --ok: #34d399;          /* entregado */
+    --wip: #60a5fa;         /* en impresión */
+    --ready: #fbbf24;       /* listo para entregar */
+    --danger: #f26161;
+    --radius: 14px;
+  }
+  *{ box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html,body{ height:100%; }
+  body{
+    margin:0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    display:flex;
+    flex-direction:column;
+    min-height:100vh;
+    overflow-x:hidden;
+  }
+  .mono{ font-family: 'JetBrains Mono', 'SF Mono', Consolas, monospace; }
+
+  /* --- Header con textura de capas de impresión --- */
+  header{
+    position:relative;
+    padding: 22px 20px 18px;
+    background: linear-gradient(180deg, var(--surface) 0%, var(--bg) 100%);
+    overflow:hidden;
+    border-bottom: 1px solid var(--line);
+  }
+  header::before{
+    content:"";
+    position:absolute; inset:0;
+    background-image: repeating-linear-gradient(
+      to bottom,
+      rgba(255,122,41,0.06) 0px,
+      rgba(255,122,41,0.06) 1px,
+      transparent 1px,
+      transparent 7px
+    );
+    pointer-events:none;
+  }
+  .eyebrow{
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin: 0 0 4px;
+    position:relative;
+  }
+  h1{
+    margin:0;
+    font-size: 24px;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    position:relative;
+  }
+  .backup-btn{
+    position:absolute;
+    top:20px; right:18px;
+    width:36px; height:36px;
+    border-radius:10px;
+    background: var(--surface-2);
+    border:1px solid var(--line);
+    color: var(--ink-dim);
+    font-size:16px;
+    display:flex; align-items:center; justify-content:center;
+    cursor:pointer;
+    z-index:2;
+  }
+  .backup-btn:active{ opacity:.7; }
+  .tagline{
+    margin: 4px 0 0;
+    font-size: 13px;
+    color: var(--ink-dim);
+    position:relative;
+  }
+
+  main{ flex:1; padding: 16px 16px 100px; max-width: 560px; width:100%; margin:0 auto; }
+  .view{ display:none; animation: fade .18s ease; }
+  .view.active{ display:block; }
+  @keyframes fade{ from{opacity:0; transform:translateY(4px)} to{opacity:1; transform:none} }
+
+  .section-title{
+    display:flex; align-items:center; justify-content:space-between;
+    margin: 4px 0 12px;
+  }
+  .section-title h2{ font-size:15px; margin:0; color:var(--ink-dim); font-weight:600; text-transform:uppercase; letter-spacing:.06em; }
+  .count-pill{
+    font-family:'JetBrains Mono', monospace;
+    font-size:11px;
+    color: var(--ink-dim);
+    background: var(--surface-2);
+    border-radius: 20px;
+    padding: 2px 9px;
+  }
+
+  .toolbar{ margin-bottom: 12px; }
+  .search-wrap{
+    position:relative;
+    margin-bottom: 10px;
+  }
+  .search-wrap .glass{
+    position:absolute; left:12px; top:50%; transform:translateY(-50%);
+    font-size:14px; color: var(--ink-dim); pointer-events:none;
+  }
+  .search-input{
+    width:100%;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    color: var(--ink);
+    border-radius: 12px;
+    padding: 11px 12px 11px 34px;
+    font-size: 14.5px;
+    font-family: inherit;
+  }
+  .search-input::placeholder{ color: var(--ink-dim); }
+  .sort-select{
+    width:100%;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    color: var(--ink-dim);
+    border-radius: 12px;
+    padding: 9px 12px;
+    font-size: 13px;
+    font-family: 'JetBrains Mono', monospace;
+  }
+
+  .card{
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: 14px;
+    margin-bottom: 10px;
+  }
+  .card:active{ background: var(--surface-2); }
+
+  .empty{
+    text-align:center;
+    padding: 48px 20px;
+    color: var(--ink-dim);
+  }
+  .empty .glyph{ font-size:34px; margin-bottom:10px; opacity:.6; }
+  .empty p{ margin:4px 0; font-size:14px; }
+
+  /* Clientes */
+  .client-row{ display:flex; gap:12px; align-items:flex-start; cursor:pointer; }
+  .avatar{
+    width:40px; height:40px; border-radius:10px;
+    background: var(--surface-2);
+    color: var(--accent);
+    display:flex; align-items:center; justify-content:center;
+    font-weight:700; font-size:15px;
+    flex-shrink:0;
+    font-family:'JetBrains Mono', monospace;
+  }
+  .client-info{ flex:1; min-width:0; }
+  .client-name{ font-weight:600; font-size:15px; margin-bottom:2px; }
+  .client-meta{ font-size:12.5px; color:var(--ink-dim); display:flex; flex-direction:column; gap:1px; }
+  .client-meta span{ overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .order-badge{
+    font-family:'JetBrains Mono', monospace;
+    font-size:10.5px;
+    color: var(--ink-dim);
+    margin-top:6px;
+  }
+
+  /* Pedidos */
+  .order-card{ display:flex; justify-content:space-between; gap:10px; }
+  .order-main{ min-width:0; flex:1; }
+  .order-item{ font-weight:600; font-size:14.5px; margin-bottom:3px; }
+  .order-client{ font-size:12.5px; color:var(--ink-dim); }
+  .order-side{ text-align:right; flex-shrink:0; }
+  .order-price{ font-family:'JetBrains Mono', monospace; font-weight:700; font-size:14px; }
+  .status-chip{
+    display:inline-flex; align-items:center; gap:5px;
+    font-size:11px; font-family:'JetBrains Mono', monospace;
+    padding:3px 8px; border-radius:20px;
+    margin-top:6px; cursor:pointer; user-select:none;
+    border:1px solid transparent;
+  }
+  .status-chip::before{ content:""; width:6px; height:6px; border-radius:50%; }
+  .status-wip{ background: rgba(96,165,250,.12); color: var(--wip); }
+  .status-wip::before{ background: var(--wip); }
+  .status-ready{ background: rgba(251,191,36,.12); color: var(--ready); }
+  .status-ready::before{ background: var(--ready); }
+  .status-done{ background: rgba(52,211,153,.12); color: var(--ok); }
+  .status-done::before{ background: var(--ok); }
+
+  /* Prospectos */
+  .prospect-card{ display:flex; gap:12px; align-items:flex-start; }
+  .prospect-pin{
+    width:34px; height:34px; border-radius:10px;
+    background: rgba(255,122,41,.12);
+    color: var(--accent);
+    display:flex; align-items:center; justify-content:center;
+    flex-shrink:0; font-size:16px;
+  }
+  .prospect-name{ font-weight:600; font-size:14.5px; }
+  .prospect-note{ font-size:13px; color:var(--ink-dim); margin-top:2px; }
+  .prospect-date{ font-size:11px; color:var(--ink-dim); font-family:'JetBrains Mono', monospace; margin-top:5px; }
+
+  /* Botón flotante */
+  .fab{
+    position:fixed;
+    right: 20px; bottom: 88px;
+    width:54px; height:54px;
+    border-radius: 16px;
+    background: var(--accent);
+    color: var(--accent-ink);
+    border:none;
+    font-size:26px;
+    display:flex; align-items:center; justify-content:center;
+    box-shadow: 0 8px 20px rgba(255,122,41,.35);
+    cursor:pointer;
+    z-index: 20;
+  }
+  .fab:active{ transform: scale(0.94); }
+
+  /* Nav inferior */
+  nav{
+    position:fixed; bottom:0; left:0; right:0;
+    background: var(--surface);
+    border-top: 1px solid var(--line);
+    display:flex;
+    padding: 8px 6px calc(8px + env(safe-area-inset-bottom));
+    z-index: 15;
+  }
+  .nav-btn{
+    flex:1; background:none; border:none; color: var(--ink-dim);
+    display:flex; flex-direction:column; align-items:center; gap:3px;
+    padding:6px 2px; cursor:pointer; border-radius:10px;
+    font-family: inherit; font-size:10.5px; letter-spacing:.02em;
+  }
+  .nav-btn .icon{ font-size:19px; }
+  .nav-btn.active{ color: var(--accent); }
+
+  /* Modal / formulario */
+  .sheet-backdrop{
+    position:fixed; inset:0; background: rgba(0,0,0,.55);
+    display:none; align-items:flex-end; z-index: 30;
+  }
+  .sheet-backdrop.active{ display:flex; }
+  .sheet{
+    background: var(--surface);
+    width:100%; max-width:560px; margin:0 auto;
+    border-radius: 20px 20px 0 0;
+    padding: 18px 18px calc(20px + env(safe-area-inset-bottom));
+    max-height: 88vh; overflow-y:auto;
+    border-top: 1px solid var(--line);
+  }
+  .sheet-handle{ width:36px; height:4px; background:var(--line); border-radius:4px; margin: 0 auto 14px; }
+  .sheet h3{ margin:0 0 16px; font-size:17px; }
+  .field{ margin-bottom:12px; }
+  .field label{ display:block; font-size:12px; color:var(--ink-dim); margin-bottom:5px; font-weight:600; }
+  .field input, .field textarea, .field select{
+    width:100%; background: var(--surface-2); border:1px solid var(--line);
+    color: var(--ink); border-radius:10px; padding:11px 12px; font-size:15px;
+    font-family:inherit;
+  }
+  .field textarea{ resize:vertical; min-height:60px; }
+  .field-hint{ display:block; font-size:11px; color: var(--ink-dim); margin-top:5px; }
+
+  /* Lista de productos dentro de un pedido */
+  .product-row{
+    display:flex; gap:8px; align-items:flex-start;
+    background: var(--surface-2);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 10px;
+    margin-bottom: 8px;
+  }
+  .product-row-fields{ flex:1; display:flex; flex-direction:column; gap:6px; }
+  .product-row-line2{ display:flex; gap:6px; }
+  .product-name-input{
+    width:100%; background: var(--bg); border:1px solid var(--line);
+    color: var(--ink); border-radius:8px; padding:9px 10px; font-size:14px; font-family:inherit;
+  }
+  .product-qty-input, .product-price-input{
+    width:100%; background: var(--bg); border:1px solid var(--line);
+    color: var(--ink); border-radius:8px; padding:9px 10px; font-size:13.5px; font-family:inherit;
+  }
+  .product-qty-input{ flex: 0 0 30%; }
+  .product-price-input{ flex:1; }
+  .product-subtotal{
+    font-family:'JetBrains Mono', monospace; font-size:11.5px; color: var(--ink-dim);
+    margin-top:2px;
+  }
+  .remove-product-btn{
+    flex-shrink:0; width:30px; height:30px; border-radius:8px;
+    background: rgba(242,97,97,.12); color: var(--danger);
+    border:none; font-size:15px; cursor:pointer; margin-top:1px;
+  }
+  .add-product-btn{
+    width:100%; background: none; border: 1px dashed var(--line);
+    color: var(--accent); border-radius:10px; padding:10px;
+    font-size:13.5px; font-weight:600; cursor:pointer; font-family:inherit;
+  }
+  .add-product-btn:active{ background: var(--surface-2); }
+  .order-total-row{
+    display:flex; justify-content:space-between; align-items:center;
+    background: var(--surface-2); border-radius:10px;
+    padding: 11px 14px; margin: 4px 0 14px;
+    font-size:13.5px; font-weight:600; color: var(--ink-dim);
+  }
+  .order-total-row .mono{ color: var(--ink); font-size:16px; font-weight:700; }
+  .field-row{ display:flex; gap:10px; }
+  .field-row .field{ flex:1; }
+  .sheet-actions{ display:flex; gap:10px; margin-top:16px; }
+  .btn{
+    flex:1; padding:13px; border-radius:12px; border:none;
+    font-weight:700; font-size:14.5px; cursor:pointer; font-family:inherit;
+  }
+  .btn-primary{ background: var(--accent); color: var(--accent-ink); }
+  .btn-secondary{ background: var(--surface-2); color: var(--ink); }
+  .btn-danger{ background: rgba(242,97,97,.14); color: var(--danger); }
+  .btn:active{ opacity:.8; }
+
+  .detail-row{ display:flex; justify-content:space-between; padding: 9px 0; border-bottom:1px solid var(--line); font-size:14px; }
+
+  .font-size-control{
+    display:flex; align-items:center; justify-content:space-between;
+    background: var(--surface-2);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 12px 14px;
+    margin-bottom: 16px;
+  }
+  .field-label-inline{ font-size:14px; font-weight:600; }
+  .font-size-buttons{ display:flex; align-items:center; gap:10px; }
+  .fs-btn{
+    width:34px; height:34px; border-radius:9px;
+    background: var(--bg); border:1px solid var(--line); color: var(--ink);
+    font-size:14px; font-weight:700; cursor:pointer;
+  }
+  .fs-btn:active{ background: var(--surface); }
+  .fs-value{ font-size:12.5px; color: var(--ink-dim); min-width:38px; text-align:center; }
+  .detail-row:last-of-type{ border-bottom:none; }
+  .detail-row-tap{ cursor:pointer; }
+  .detail-row-tap:active{ background: var(--surface-2); margin: 0 -14px; padding-left:14px; padding-right:14px; border-radius:8px; }
+  .detail-row-tap .detail-value{ color: var(--ok); display:flex; align-items:center; gap:6px; justify-content:flex-end; }
+  .wa-icon{ font-size:13px; }
+  .detail-label{ color:var(--ink-dim); }
+  .detail-value{ font-weight:600; text-align:right; max-width:65%; }
+
+  /* Vendedores / Casa matriz */
+  .vendor-chip{
+    display:inline-block; font-family:'JetBrains Mono', monospace; font-size:10px;
+    color: var(--accent); background: rgba(255,122,41,.12);
+    border-radius:20px; padding:2px 8px; margin-top:6px; margin-right:6px;
+  }
+  .override-chip{
+    display:inline-block; font-size:11px; margin-left:4px; cursor:help;
+  }
+  .cm-banner{
+    display:flex; align-items:center; gap:8px;
+    background: rgba(255,122,41,.1); border:1px solid var(--accent);
+    color: var(--accent); border-radius:10px; padding:8px 12px;
+    font-size:12.5px; font-weight:600; margin-bottom:12px;
+  }
+  .cm-filter-wrap{ display:flex; gap:6px; overflow-x:auto; margin-bottom:10px; padding-bottom:2px; }
+  .cm-filter-chip{
+    flex-shrink:0; font-family:'JetBrains Mono', monospace; font-size:11.5px;
+    color: var(--ink-dim); background: var(--surface); border:1px solid var(--line);
+    border-radius:20px; padding:6px 12px; cursor:pointer; white-space:nowrap;
+  }
+  .cm-filter-chip.active{ color: var(--accent-ink); background: var(--accent); border-color:var(--accent); }
+  .opt-section{
+    background: var(--surface-2); border:1px solid var(--line); border-radius:12px;
+    padding: 14px; margin-bottom: 14px;
+  }
+  .opt-section h4{ margin:0 0 10px; font-size:13px; text-transform:uppercase; letter-spacing:.05em; color:var(--ink-dim); }
+  .opt-row{ display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:8px; font-size:13.5px; }
+  .opt-row:last-child{ margin-bottom:0; }
+  .dot{ width:8px; height:8px; border-radius:50%; display:inline-block; margin-right:6px; flex-shrink:0; }
+  .dot-on{ background: var(--ok); }
+  .dot-off{ background: var(--ink-dim); }
+  .link-btn{ background:none; border:none; color: var(--accent); font-weight:600; font-size:13px; padding:0; cursor:pointer; font-family:inherit; }
+  .vendedor-row{
+    display:flex; justify-content:space-between; align-items:center;
+    background: var(--surface); border:1px solid var(--line); border-radius:10px;
+    padding:10px 12px; margin-bottom:8px; font-size:13.5px;
+  }
+  .vendedor-row-actions{ display:flex; gap:6px; }
+  .icon-btn-sm{
+    width:28px; height:28px; border-radius:8px; border:none; cursor:pointer;
+    background: var(--surface-2); color: var(--ink-dim); font-size:12px;
+  }
+
+  /* Instrucciones de sincronización */
+  .instr-group{ margin-bottom:18px; }
+  .instr-group h4{
+    margin:0 0 4px; font-size:14px; color: var(--accent);
+    display:flex; align-items:center; gap:8px;
+  }
+  .instr-group h4 .instr-icon{ font-size:16px; }
+  .instr-group p.instr-sub{ margin:0 0 12px; font-size:12.5px; color:var(--ink-dim); }
+  .instr-step{
+    display:flex; gap:10px; margin-bottom:12px; align-items:flex-start;
+  }
+  .instr-num{
+    flex-shrink:0; width:22px; height:22px; border-radius:50%;
+    background: var(--surface-2); border:1px solid var(--line);
+    color: var(--accent); font-family:'JetBrains Mono', monospace; font-size:11.5px;
+    font-weight:700; display:flex; align-items:center; justify-content:center;
+    margin-top:1px;
+  }
+  .instr-text{ font-size:13.5px; line-height:1.5; }
+  .instr-text b{ color: var(--ink); }
+  .instr-code{
+    display:inline-block; background: var(--bg); border:1px solid var(--line);
+    border-radius:6px; padding:1px 6px; font-family:'JetBrains Mono', monospace;
+    font-size:12px; color: var(--accent); word-break:break-all;
+  }
+  .instr-divider{ height:1px; background: var(--line); margin: 16px 0; border:none; }
+</style>
+</head>
+<body>
+
+<header>
+  <p class="eyebrow mono">Taller de impresión 3D</p>
+  <h1 id="headerTitle">Clientes</h1>
+  <p class="tagline" id="headerTag">Gestioná tu negocio desde el celular</p>
+  <button class="backup-btn" id="backupBtn" aria-label="Copia de seguridad">⚙️</button>
+</header>
+
+<main>
+  <div class="cm-banner" id="cmBanner" style="display:none;">
+    🏢 Estás viendo el modo Casa Matriz (datos de todos los vendedores)
+  </div>
+  <!-- CLIENTES -->
+  <section class="view active" id="view-clientes">
+    <div class="section-title">
+      <h2>Tus clientes</h2>
+      <span class="count-pill mono" id="clientCount">0</span>
+    </div>
+    <div class="toolbar">
+      <div id="clientFilterBar"></div>
+      <div class="search-wrap">
+        <span class="glass">🔍</span>
+        <input class="search-input" id="clientSearch" placeholder="Buscar por nombre, teléfono, email o dirección..." oninput="renderClients()">
+      </div>
+    </div>
+    <div id="clientList"></div>
+  </section>
+
+  <!-- PEDIDOS -->
+  <section class="view" id="view-pedidos">
+    <div class="section-title">
+      <h2>Pedidos</h2>
+      <span class="count-pill mono" id="orderCount">0</span>
+    </div>
+    <div class="toolbar">
+      <div id="orderFilterBar"></div>
+      <select class="sort-select" id="orderSort" onchange="renderOrders()">
+        <option value="createdAt_desc">Más recientes primero</option>
+        <option value="createdAt_asc">Más antiguos primero</option>
+        <option value="cliente_az">Cliente (A → Z)</option>
+        <option value="item_az">Ítem (A → Z)</option>
+        <option value="entrega_asc">Fecha de entrega (más próxima)</option>
+        <option value="precio_desc">Precio (mayor a menor)</option>
+        <option value="estado">Estado</option>
+      </select>
+    </div>
+    <div id="orderList"></div>
+  </section>
+
+  <!-- PROSPECTOS -->
+  <section class="view" id="view-prospectos">
+    <div class="section-title">
+      <h2>Posibles clientes</h2>
+      <span class="count-pill mono" id="prospectCount">0</span>
+    </div>
+    <div id="prospectList"></div>
+  </section>
+</main>
+
+<button class="fab" id="fabBtn">＋</button>
+
+<nav>
+  <button class="nav-btn active" data-view="clientes">
+    <span class="icon">👤</span><span>Clientes</span>
+  </button>
+  <button class="nav-btn" data-view="pedidos">
+    <span class="icon">📦</span><span>Pedidos</span>
+  </button>
+  <button class="nav-btn" data-view="prospectos">
+    <span class="icon">📍</span><span>Prospectos</span>
+  </button>
+</nav>
+
+<!-- Sheet: nuevo/editar cliente -->
+<div class="sheet-backdrop" id="sheetCliente">
+  <div class="sheet">
+    <div class="sheet-handle"></div>
+    <h3 id="clienteSheetTitle">Nuevo cliente</h3>
+    <input type="hidden" id="clienteId">
+    <div class="field"><label>Nombre</label><input id="clienteNombre" placeholder="Ej: María Gómez"></div>
+    <div class="field-row">
+      <div class="field"><label>Teléfono</label><input id="clienteTelefono" placeholder="11 5555-5555" type="tel"><span class="field-hint">Se agrega +54 9 solo. Escribilo sin el 0 ni el 15 (ej: 11 5555-5555)</span></div>
+      <div class="field"><label>Email</label><input id="clienteEmail" placeholder="maria@mail.com" type="email"></div>
+    </div>
+    <div class="field"><label>Dirección</label><input id="clienteDireccion" placeholder="Calle 44 n°123, La Plata"></div>
+    <div class="field"><label>Notas</label><textarea id="clienteNotas" placeholder="Prefiere WhatsApp, paga en efectivo..."></textarea></div>
+    <div class="field" id="clienteVendedorField" style="display:none;">
+      <label>Vendedor</label>
+      <select id="clienteVendedor"></select>
+      <span class="field-hint">Este cambio se guarda como ajuste de casa matriz, sin pisar los datos del vendedor.</span>
+    </div>
+    <div class="sheet-actions">
+      <button class="btn btn-secondary" onclick="closeSheet('sheetCliente')">Cancelar</button>
+      <button class="btn btn-primary" onclick="saveCliente()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Sheet: detalle cliente -->
+<div class="sheet-backdrop" id="sheetClienteDetalle">
+  <div class="sheet">
+    <div class="sheet-handle"></div>
+    <h3 id="detalleClienteNombre">Cliente</h3>
+    <div id="detalleClienteInfo"></div>
+    <p style="font-size:12px;color:var(--ink-dim);text-transform:uppercase;letter-spacing:.06em;margin:16px 0 8px;">Pedidos de este cliente</p>
+    <div id="detalleClientePedidos"></div>
+    <div class="sheet-actions">
+      <button class="btn btn-danger" id="btnEliminarCliente" onclick="deleteCliente()">Eliminar</button>
+      <button class="btn btn-secondary" onclick="editCliente()">Editar</button>
+      <button class="btn btn-primary" onclick="closeSheet('sheetClienteDetalle')">Cerrar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Sheet: nuevo pedido -->
+<div class="sheet-backdrop" id="sheetPedido">
+  <div class="sheet">
+    <div class="sheet-handle"></div>
+    <h3 id="pedidoSheetTitle">Nuevo pedido</h3>
+    <input type="hidden" id="pedidoId">
+    <div class="field">
+      <label>Cliente</label>
+      <select id="pedidoCliente"></select>
+    </div>
+
+    <div class="field">
+      <label>Productos del pedido</label>
+      <div id="productosList"></div>
+      <button type="button" class="add-product-btn" onclick="addProductRow()">+ Agregar producto</button>
+    </div>
+
+    <div class="order-total-row">
+      <span>Total del pedido</span>
+      <span class="mono" id="pedidoTotalPreview">$0</span>
+    </div>
+
+    <div class="field-row">
+      <div class="field"><label>Entrega</label><input id="pedidoFecha" type="date"></div>
+      <div class="field">
+        <label>Estado</label>
+        <select id="pedidoEstado">
+          <option value="wip">En impresión</option>
+          <option value="ready">Listo para entregar</option>
+          <option value="done">Entregado y cobrado</option>
+        </select>
+      </div>
+    </div>
+    <div class="sheet-actions">
+      <button class="btn btn-secondary" onclick="closeSheet('sheetPedido')">Cancelar</button>
+      <button class="btn btn-primary" onclick="savePedido()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Sheet: nuevo prospecto -->
+<div class="sheet-backdrop" id="sheetProspecto">
+  <div class="sheet">
+    <div class="sheet-handle"></div>
+    <h3>Nuevo posible cliente</h3>
+    <input type="hidden" id="prospectoId">
+    <div class="field"><label>Lugar</label><input id="prospectoNombre" placeholder="Ej: Ferretería Don José, Av. 44"></div>
+    <div class="field"><label>Nota</label><textarea id="prospectoNota" placeholder="Vidriera grande, tal vez le interese cartelería 3D..."></textarea></div>
+    <div class="sheet-actions">
+      <button class="btn btn-secondary" onclick="closeSheet('sheetProspecto')">Cancelar</button>
+      <button class="btn btn-primary" onclick="saveProspecto()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Sheet: clave casa matriz -->
+<div class="sheet-backdrop" id="sheetClaveCM">
+  <div class="sheet">
+    <div class="sheet-handle"></div>
+    <h3>Acceso Casa Matriz</h3>
+    <div class="field"><label>Clave</label><input id="claveCMInput" type="password" placeholder="••••••••"></div>
+    <p id="claveCMError" style="font-size:12.5px;color:var(--danger);min-height:16px;"></p>
+    <div class="sheet-actions">
+      <button class="btn btn-secondary" onclick="closeSheet('sheetClaveCM')">Cancelar</button>
+      <button class="btn btn-primary" onclick="verificarClaveCM()">Entrar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Sheet: alta/edición de vendedor (solo casa matriz) -->
+<div class="sheet-backdrop" id="sheetVendedor">
+  <div class="sheet">
+    <div class="sheet-handle"></div>
+    <h3 id="vendedorSheetTitle">Nuevo vendedor</h3>
+    <input type="hidden" id="vendedorId">
+    <div class="field"><label>Nombre / identificador</label><input id="vendedorNombre" placeholder="Ej: Juan, Sucursal Norte"></div>
+    <div class="field">
+      <label>Link o ID del archivo de Drive del vendedor</label>
+      <input id="vendedorDriveLink" placeholder="Pegar el link para compartir o el ID del archivo">
+      <span class="field-hint">El vendedor le tiene que dar acceso de edición a este archivo a tu cuenta de Google desde su Drive, y pasarte el link.</span>
+    </div>
+    <div class="sheet-actions">
+      <button class="btn btn-secondary" onclick="closeSheet('sheetVendedor')">Cancelar</button>
+      <button class="btn btn-primary" onclick="guardarVendedor()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Sheet: gestión de vendedores (solo casa matriz) -->
+<div class="sheet-backdrop" id="sheetVendedores">
+  <div class="sheet">
+    <div class="sheet-handle"></div>
+    <h3>Vendedores</h3>
+    <div id="vendedoresList"></div>
+    <button class="btn btn-primary" style="width:100%;margin-top:4px;" onclick="abrirVendedorForm()">+ Agregar vendedor</button>
+    <div class="sheet-actions">
+      <button class="btn btn-secondary" style="width:100%;" onclick="closeSheet('sheetVendedores')">Cerrar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Sheet: instrucciones de sincronización -->
+<div class="sheet-backdrop" id="sheetInstrucciones">
+  <div class="sheet">
+    <div class="sheet-handle"></div>
+    <h3>¿Cómo sincronizo?</h3>
+
+    <div class="instr-group">
+      <h4><span class="instr-icon">🌐</span>Paso 1 — Subir la app a internet</h4>
+      <p class="instr-sub">Google no deja conectar con Drive si la app está abierta como un archivo suelto en el celular. Hay que alojarla en una dirección web, y GitHub Pages lo hace gratis.</p>
+      <div class="instr-step"><span class="instr-num">1</span><span class="instr-text">Crear una cuenta gratis en <b>github.com</b> (si no tenés una).</span></div>
+      <div class="instr-step"><span class="instr-num">2</span><span class="instr-text">Crear un repositorio nuevo y subir ahí el archivo <span class="instr-code">gestion-3d.html</span>.</span></div>
+      <div class="instr-step"><span class="instr-num">3</span><span class="instr-text">En ese repositorio ir a <b>Settings → Pages</b> y activarlo. GitHub te va a dar una dirección propia, algo como <span class="instr-code">https://tu-usuario.github.io/tu-repo/gestion-3d.html</span>.</span></div>
+      <div class="instr-step"><span class="instr-num">4</span><span class="instr-text">Esa dirección es la que hay que abrir en el celular de ahora en más (y la que se agrega a la pantalla de inicio), en vez del archivo descargado.</span></div>
+    </div>
+
+    <hr class="instr-divider">
+
+    <div class="instr-group">
+      <h4><span class="instr-icon">🔑</span>Paso 2 — Credenciales de Google (una sola vez)</h4>
+      <p class="instr-sub">Son gratis. Las tiene que crear la persona que administra el negocio, y después pegarlas en el código de la app.</p>
+      <div class="instr-step"><span class="instr-num">1</span><span class="instr-text">Entrar a <b>console.cloud.google.com</b> y crear un proyecto nuevo.</span></div>
+      <div class="instr-step"><span class="instr-num">2</span><span class="instr-text">Ir a <b>APIs y servicios → Biblioteca</b> y activar <b>Google Drive API</b>.</span></div>
+      <div class="instr-step"><span class="instr-num">3</span><span class="instr-text">Ir a <b>APIs y servicios → Pantalla de consentimiento OAuth</b>, elegir tipo <b>Externo</b>, y agregar como "usuarios de prueba" el mail de Gmail de cada vendedor y el de casa matriz.</span></div>
+      <div class="instr-step"><span class="instr-num">4</span><span class="instr-text">Ir a <b>Credenciales → Crear credenciales → ID de cliente de OAuth 2.0</b>, tipo <b>Aplicación web</b>. En "Orígenes de JavaScript autorizados" pegar la dirección de GitHub Pages del Paso 1.</span></div>
+      <div class="instr-step"><span class="instr-num">5</span><span class="instr-text">Crear también una <b>Clave de API</b> (Credenciales → Crear credenciales → Clave de API).</span></div>
+      <div class="instr-step"><span class="instr-num">6</span><span class="instr-text">Abrir el archivo <span class="instr-code">gestion-3d.html</span> con un editor de texto, buscar <span class="instr-code">DRIVE_CONFIG</span> al principio del código, y pegar ahí el Client ID y la Clave de API. Volver a subir el archivo actualizado a GitHub.</span></div>
+    </div>
+
+    <hr class="instr-divider">
+
+    <div class="instr-group">
+      <h4><span class="instr-icon">🔄</span>Paso 3 — Usar la sincronización</h4>
+      <div class="instr-step"><span class="instr-num">1</span><span class="instr-text">Cada vendedor toca <b>Conectar Google Drive</b> en Opciones y autoriza con su cuenta de Google (una sola vez).</span></div>
+      <div class="instr-step"><span class="instr-num">2</span><span class="instr-text">A partir de ahí, la app sube sus datos solos cada <b>5 minutos</b> mientras haya internet. También se puede tocar <b>Sincronizar ahora</b> para forzarlo al toque.</span></div>
+      <div class="instr-step"><span class="instr-num">3</span><span class="instr-text">Casa matriz agrega a cada vendedor desde <b>Gestionar vendedores</b>, pegando el link para compartir del archivo que ese vendedor subió a su Drive (con permiso de edición para la cuenta de casa matriz).</span></div>
+    </div>
+
+    <div class="sheet-actions">
+      <button class="btn btn-primary" style="width:100%;" onclick="closeSheet('sheetInstrucciones')">Entendido</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* =========================================================
+   MODELO DE DATOS
+   ---------------------------------------------------------
+   clients:   {id, nombre, telefono, email, direccion, notas, createdAt,
+               vendedor,        // <- identificador del vendedor dueño del registro
+               documentoUrl}
+   orders:    {id, clienteId, items: [{id, nombre, cantidad, precio}],
+               fecha, estado, createdAt, vendedor}
+               // el total del pedido se calcula sumando cantidad*precio
+               // de cada producto, no se guarda como campo aparte
+   prospects: {id, nombre, nota, createdAt,
+               lat, lng}       // <- TODO(Maps): coordenadas al integrar Google Maps
+               // (prospectos quedan fuera de la sincronización con Drive
+               // por ahora, ver documento de decisiones)
+   =========================================================
+   Persistencia: cada tabla se guarda como UN registro JSON bajo su propia
+   key ('clients' | 'orders' | 'prospects'), shared=false (datos privados
+   del usuario). Si en el futuro se agrega un campo, no hace falta migrar
+   nada: simplemente queda undefined en los registros viejos y el código
+   nuevo lo puebla de a poco.
+   ========================================================= */
+
+let clients = [];
+let orders = [];
+let prospects = [];
+
+/* =========================================================
+   GOOGLE DRIVE — CONFIGURACIÓN REQUERIDA (ver también el sheet
+   de Opciones dentro de la app, que avisa si esto falta)
+   ---------------------------------------------------------
+   La sincronización entre vendedores y casa matriz usa Google
+   Drive como backend, sin servidor propio. Para que funcione hay
+   que crear credenciales gratuitas en Google Cloud Console:
+
+   1. https://console.cloud.google.com/ → crear un proyecto.
+   2. "APIs y servicios" → "Biblioteca" → activar "Google Drive API".
+   3. "APIs y servicios" → "Pantalla de consentimiento OAuth":
+      tipo Externo; agregar como "usuarios de prueba" las cuentas
+      de Gmail de cada vendedor y de casa matriz (mientras la app
+      no esté verificada por Google, solo esas cuentas van a poder
+      autorizar el acceso).
+   4. "Credenciales" → "Crear credenciales":
+      a) "ID de cliente de OAuth 2.0" (tipo "Aplicación web"). En
+         "Orígenes de JavaScript autorizados" hay que poner el
+         dominio donde se abra este archivo. Un archivo local
+         (file://) no funciona con OAuth: conviene alojar este
+         HTML en un hosting simple (ej. GitHub Pages) y usar esa
+         URL acá.
+      b) "Clave de API" (puede dejarse sin restringir, o restringida
+         a la Google Drive API).
+   5. Pegar ambos valores abajo, en CLIENT_ID y API_KEY.
+
+   Mientras estos valores tengan el placeholder de ejemplo, los
+   botones de Drive muestran un aviso en vez de fallar en silencio.
+   ========================================================= */
+const DRIVE_CONFIG = {
+  CLIENT_ID: 'PEGAR_TU_CLIENT_ID_ACA.apps.googleusercontent.com',
+  API_KEY: 'PEGAR_TU_API_KEY_ACA',
+  SCOPES: 'https://www.googleapis.com/auth/drive'
+};
+function driveConfigured(){
+  return !DRIVE_CONFIG.CLIENT_ID.startsWith('PEGAR_') && !DRIVE_CONFIG.API_KEY.startsWith('PEGAR_');
+}
+
+const CM_PASSWORD = 'Prisma21';
+
+/* ---------- Estado de vendedor / casa matriz ---------- */
+let vendorName = '';
+let driveFileId = null;                  // archivo propio de este vendedor en su Drive
+let overridesFileId = null;              // archivo de overrides de casa matriz (lo aprende el vendedor)
+let casaMatrizUnlocked = false;          // ya se ingresó la clave alguna vez en este dispositivo
+let casaMatrizModo = false;              // viendo la app como casa matriz ahora mismo
+let casaMatrizVendedores = [];           // [{id, nombre, driveFileId}]
+let casaMatrizOverridesFileId = null;    // archivo propio de overrides en el Drive de casa matriz
+let overridesData = { clients:{}, orders:{} }; // overrides conocidos/aplicados: {[id]:{campos,_at}}
+let cmConsolidado = { clients:[], orders:[] }; // datos combinados de todos los vendedores (solo modo casa matriz)
+let cmFiltroVendedor = '';
+let driveAccessToken = null;
+let driveTokenClient = null;
+let syncTimer = null;
+let lastSyncAt = null;
+let editandoVendedorId = null;
+
+const STATUS_LABEL = { wip: 'En impresión', ready: 'Listo para entregar', done: 'Entregado y cobrado' };
+const STATUS_CLASS = { wip: 'status-wip', ready: 'status-ready', done: 'status-done' };
+
+function uid(){ return Date.now().toString(36) + Math.random().toString(36).slice(2,7); }
+
+// Convierte pedidos viejos (un solo item/precio) al formato de lista de productos.
+function migrarPedidosViejos(){
+  let changed = false;
+  orders.forEach(o=>{
+    if(!Array.isArray(o.items)){
+      o.items = [{ id: uid(), nombre: o.item || 'Producto', cantidad: 1, precio: Number(o.precio)||0 }];
+      delete o.item;
+      delete o.precio;
+      changed = true;
+    }
+  });
+  return changed;
+}
+
+function ordTotal(order){
+  return (order.items||[]).reduce((sum,p)=> sum + (Number(p.precio)||0) * (Number(p.cantidad)||1), 0);
+}
+function ordResumen(order){
+  return (order.items||[]).map(p => (Number(p.cantidad)>1 ? `${p.nombre} x${p.cantidad}` : p.nombre)).join(', ') || 'Sin productos';
+}
+
+/* Guardado con localStorage del navegador: como esta página se usa como
+   archivo suelto (descargado, no dentro del panel de Claude), los datos
+   quedan guardados en ESTE navegador y ESTE dispositivo. Si la abrís en
+   modo incógnito, en otro navegador, o borrás datos de navegación, no
+   vas a ver lo que cargaste antes. */
+const STORAGE_PREFIX = 'taller3d_';
+
+async function loadAll(){
+  try{
+    const c = localStorage.getItem(STORAGE_PREFIX + 'clients');
+    clients = c ? JSON.parse(c) : [];
+  }catch(e){ clients = []; }
+  try{
+    const o = localStorage.getItem(STORAGE_PREFIX + 'orders');
+    orders = o ? JSON.parse(o) : [];
+  }catch(e){ orders = []; }
+  const migrated = migrarPedidosViejos();
+  if(migrated) await persist('orders', orders);
+  try{
+    const p = localStorage.getItem(STORAGE_PREFIX + 'prospects');
+    prospects = p ? JSON.parse(p) : [];
+  }catch(e){ prospects = []; }
+
+  vendorName = localStorage.getItem(STORAGE_PREFIX + 'vendorName') || '';
+  driveFileId = localStorage.getItem(STORAGE_PREFIX + 'driveFileId') || null;
+  overridesFileId = localStorage.getItem(STORAGE_PREFIX + 'overridesFileId') || null;
+  casaMatrizUnlocked = localStorage.getItem(STORAGE_PREFIX + 'cmUnlocked') === 'true';
+  casaMatrizModo = casaMatrizUnlocked && localStorage.getItem(STORAGE_PREFIX + 'cmModo') === 'true';
+  try{ casaMatrizVendedores = JSON.parse(localStorage.getItem(STORAGE_PREFIX + 'cmVendedores') || '[]'); }catch(e){ casaMatrizVendedores = []; }
+  casaMatrizOverridesFileId = localStorage.getItem(STORAGE_PREFIX + 'cmOverridesFileId') || null;
+  try{ overridesData = JSON.parse(localStorage.getItem(STORAGE_PREFIX + 'overridesCache') || '{"clients":{},"orders":{}}'); }catch(e){ overridesData = {clients:{},orders:{}}; }
+
+  renderAll();
+  actualizarUIModo();
+  iniciarSincronizacionAutomatica();
+}
+
+async function persist(key, data){
+  try{
+    localStorage.setItem(STORAGE_PREFIX + key, JSON.stringify(data));
+  }catch(e){
+    console.error('Error guardando', key, e);
+    alert('No se pudo guardar. Puede que el navegador esté sin espacio o en modo privado.');
+  }
+}
+
+function renderAll(){
+  renderClients();
+  renderOrders();
+  renderProspects();
+}
+
+/* ---------- CLIENTES ---------- */
+function clientesFuente(){
+  if(casaMatrizModo) return cmConsolidado.clients;
+  return clients.map(c => aplicarOverride(c, 'clients'));
+}
+function ordersFuente(){
+  if(casaMatrizModo) return cmConsolidado.orders;
+  return orders.map(o => aplicarOverride(o, 'orders'));
+}
+
+function renderClients(){
+  const base = clientesFuente();
+  document.getElementById('clientCount').textContent = base.length;
+  const list = document.getElementById('clientList');
+  renderCmFilterBar('clientFilterBar');
+
+  let filtered = base;
+  if(casaMatrizModo && cmFiltroVendedor){
+    filtered = filtered.filter(c => (c.vendedor||'') === cmFiltroVendedor);
+  }
+
+  if(filtered.length === 0){
+    list.innerHTML = base.length === 0
+      ? emptyState('👤', 'Todavía no cargaste clientes', 'Tocá el botón + para agregar el primero')
+      : emptyState('🔍', 'Sin clientes para este filtro', 'Probá con otro vendedor');
+    return;
+  }
+  const term = (document.getElementById('clientSearch')?.value || '').trim().toLowerCase();
+  if(term){
+    filtered = filtered.filter(c => {
+      const haystack = [c.nombre, c.telefono, c.email, c.direccion, c.notas]
+        .filter(Boolean).join(' ').toLowerCase();
+      return haystack.includes(term);
+    });
+  }
+  const sorted = [...filtered].sort((a,b)=> a.nombre.localeCompare(b.nombre, 'es', {sensitivity:'base'}));
+  if(sorted.length === 0){
+    list.innerHTML = emptyState('🔍', 'Sin resultados', `Ningún cliente coincide con "${term}"`);
+    return;
+  }
+  const ordersBase = ordersFuente();
+  list.innerHTML = sorted.map(c => {
+    const nOrders = ordersBase.filter(o=>o.clienteId===c.id).length;
+    const initial = (c.nombre||'?').trim().charAt(0).toUpperCase();
+    return `
+      <div class="card client-row" onclick="openClienteDetalle('${c.id}')">
+        <div class="avatar">${initial}</div>
+        <div class="client-info">
+          <div class="client-name">${escapeHtml(c.nombre)}${c._cmOverride ? overrideChip() : ''}</div>
+          <div class="client-meta">
+            ${c.telefono ? `<span>📞 ${escapeHtml(c.telefono)}</span>` : ''}
+            ${c.email ? `<span>✉️ ${escapeHtml(c.email)}</span>` : ''}
+            ${c.direccion ? `<span>📍 ${escapeHtml(c.direccion)}</span>` : ''}
+          </div>
+          <div class="order-badge">${nOrders} pedido${nOrders===1?'':'s'}</div>
+          ${casaMatrizModo ? vendorChip(c.vendedor) : ''}
+        </div>
+      </div>`;
+  }).join('');
+}
+
+function openClienteForm(id){
+  document.getElementById('clienteSheetTitle').textContent = id ? 'Editar cliente' : 'Nuevo cliente';
+  document.getElementById('clienteId').value = id || '';
+  const fuente = casaMatrizModo ? cmConsolidado.clients : clients;
+  const c = id ? fuente.find(x=>x.id===id) : null;
+  document.getElementById('clienteNombre').value = c?.nombre || '';
+  document.getElementById('clienteTelefono').value = c?.telefono || '';
+  document.getElementById('clienteEmail').value = c?.email || '';
+  document.getElementById('clienteDireccion').value = c?.direccion || '';
+  document.getElementById('clienteNotas').value = c?.notas || '';
+  const vField = document.getElementById('clienteVendedorField');
+  if(casaMatrizModo){
+    vField.style.display = '';
+    const sel = document.getElementById('clienteVendedor');
+    sel.innerHTML = casaMatrizVendedores.map(v=>`<option value="${escapeHtml(v.nombre)}">${escapeHtml(v.nombre)}</option>`).join('');
+    if(c?.vendedor) sel.value = c.vendedor;
+  }else{
+    vField.style.display = 'none';
+  }
+  openSheet('sheetCliente');
+}
+
+function normalizarTelefonoAR(raw){
+  let digits = (raw || '').replace(/\D/g, '');
+  if(!digits) return '';
+  if(digits.startsWith('54')){
+    // Ya tiene código de país: lo dejamos como está (asumimos que el usuario lo cargó bien)
+    return '+' + digits;
+  }
+  if(digits.startsWith('0')) digits = digits.slice(1); // sacar el 0 de trunk
+  return '+549' + digits;
+}
+
+async function saveCliente(){
+  const nombre = document.getElementById('clienteNombre').value.trim();
+  if(!nombre){ alert('Poné al menos el nombre'); return; }
+  const id = document.getElementById('clienteId').value;
+  const data = {
+    nombre,
+    telefono: normalizarTelefonoAR(document.getElementById('clienteTelefono').value),
+    email: document.getElementById('clienteEmail').value.trim(),
+    direccion: document.getElementById('clienteDireccion').value.trim(),
+    notas: document.getElementById('clienteNotas').value.trim(),
+  };
+  const vendedorSelect = document.getElementById('clienteVendedor');
+  if(casaMatrizModo && vendedorSelect){
+    data.vendedor = vendedorSelect.value;
+  }
+
+  if(casaMatrizModo){
+    // Casa matriz no edita el registro directo del vendedor: guarda el cambio
+    // como "override" aparte, para no pisar lo que el vendedor suba después.
+    await guardarOverrideCasaMatriz('clients', id, data);
+    closeSheet('sheetCliente');
+    return;
+  }
+
+  if(id){
+    const idx = clients.findIndex(c=>c.id===id);
+    clients[idx] = { ...clients[idx], ...data };
+  }else{
+    clients.push({ id: uid(), createdAt: Date.now(), documentoUrl: null, vendedor: vendorName || null, ...data });
+  }
+  await persist('clients', clients);
+  renderClients();
+  closeSheet('sheetCliente');
+}
+
+let currentDetalleId = null;
+function openClienteDetalle(id){
+  currentDetalleId = id;
+  const c = clientesFuente().find(x=>x.id===id);
+  if(!c) return;
+  document.getElementById('detalleClienteNombre').textContent = c.nombre;
+  const rows = [];
+  if(c.telefono) rows.push(phoneRow(c.telefono));
+  if(c.email) rows.push(detailRow('Email', c.email));
+  if(c.direccion) rows.push(detailRow('Dirección', c.direccion));
+  if(c.notas) rows.push(detailRow('Notas', c.notas));
+  if(casaMatrizModo) rows.push(detailRow('Vendedor', c.vendedor || '—'));
+  document.getElementById('detalleClienteInfo').innerHTML = rows.join('') || '<p style="color:var(--ink-dim);font-size:13px;">Sin datos adicionales</p>';
+
+  const cOrders = ordersFuente().filter(o=>o.clienteId===id);
+  const list = document.getElementById('detalleClientePedidos');
+  list.innerHTML = cOrders.length
+    ? cOrders.map(o=>`<div class="detail-row"><span class="detail-label">${escapeHtml(ordResumen(o))}</span><span class="detail-value">${STATUS_LABEL[o.estado]}</span></div>`).join('')
+    : '<p style="color:var(--ink-dim);font-size:13px;">Sin pedidos todavía</p>';
+
+  const btnEliminar = document.getElementById('btnEliminarCliente');
+  if(btnEliminar) btnEliminar.style.display = casaMatrizModo ? 'none' : '';
+
+  openSheet('sheetClienteDetalle');
+}
+
+function editCliente(){
+  closeSheet('sheetClienteDetalle');
+  openClienteForm(currentDetalleId);
+}
+
+async function deleteCliente(){
+  if(casaMatrizModo){ alert('Casa matriz no elimina clientes, solo edita y reasigna. La baja la hace el vendedor desde su propia app.'); return; }
+  if(!confirm('¿Eliminar este cliente? Sus pedidos quedarán sin cliente asignado.')) return;
+  clients = clients.filter(c=>c.id!==currentDetalleId);
+  await persist('clients', clients);
+  renderClients();
+  closeSheet('sheetClienteDetalle');
+}
+
+/* ---------- PEDIDOS ---------- */
+function renderOrders(){
+  const baseAll = ordersFuente();
+  document.getElementById('orderCount').textContent = baseAll.length;
+  const list = document.getElementById('orderList');
+  renderCmFilterBar('orderFilterBar');
+
+  let base = baseAll;
+  if(casaMatrizModo && cmFiltroVendedor){
+    base = base.filter(o => (o.vendedor||'') === cmFiltroVendedor);
+  }
+  if(base.length === 0){
+    list.innerHTML = baseAll.length === 0
+      ? emptyState('📦', 'No hay pedidos cargados', 'Tocá + para anotar el primer pedido')
+      : emptyState('🔍', 'Sin pedidos para este filtro', 'Probá con otro vendedor');
+    return;
+  }
+  const sortMode = document.getElementById('orderSort')?.value || 'createdAt_desc';
+  const clientesBase = clientesFuente();
+  const clienteNombre = (o) => (clientesBase.find(c=>c.id===o.clienteId)?.nombre || '').toLowerCase();
+  const estadoOrder = { wip: 0, ready: 1, done: 2 };
+
+  const sorted = [...base].sort((a,b) => {
+    switch(sortMode){
+      case 'createdAt_asc':
+        return a.createdAt - b.createdAt;
+      case 'cliente_az':
+        return clienteNombre(a).localeCompare(clienteNombre(b), 'es', {sensitivity:'base'});
+      case 'item_az':
+        return ordResumen(a).localeCompare(ordResumen(b), 'es', {sensitivity:'base'});
+      case 'entrega_asc':
+        // sin fecha va al final
+        if(!a.fecha && !b.fecha) return 0;
+        if(!a.fecha) return 1;
+        if(!b.fecha) return -1;
+        return a.fecha.localeCompare(b.fecha);
+      case 'precio_desc':
+        return ordTotal(b) - ordTotal(a);
+      case 'estado':
+        return estadoOrder[a.estado] - estadoOrder[b.estado];
+      case 'createdAt_desc':
+      default:
+        return b.createdAt - a.createdAt;
+    }
+  });
+
+  list.innerHTML = sorted.map(o=>{
+    const cliente = clientesBase.find(c=>c.id===o.clienteId);
+    const total = ordTotal(o);
+    return `
+      <div class="card">
+        <div class="order-card">
+          <div class="order-main">
+            <div class="order-item">${escapeHtml(ordResumen(o))}${o._cmOverride ? overrideChip() : ''}</div>
+            <div class="order-client">${cliente ? escapeHtml(cliente.nombre) : 'Sin cliente'}${o.fecha ? ' · '+formatDate(o.fecha) : ''}</div>
+            <div class="status-chip ${STATUS_CLASS[o.estado]}" onclick="cycleStatus('${o.id}')">${STATUS_LABEL[o.estado]}</div>
+            ${casaMatrizModo ? vendorChip(o.vendedor) : ''}
+          </div>
+          <div class="order-side">
+            ${total ? `<div class="order-price mono">$${total.toLocaleString('es-AR')}</div>` : ''}
+            <div style="margin-top:8px;display:flex;gap:6px;justify-content:flex-end;">
+              <button class="btn btn-secondary" style="flex:none;padding:6px 10px;font-size:12px;" onclick="openPedidoForm('${o.id}')">Editar</button>
+            </div>
+          </div>
+        </div>
+      </div>`;
+  }).join('');
+}
+
+/* ---------- Productos dentro del formulario de pedido ---------- */
+function addProductRow(producto){
+  const rowId = uid();
+  const wrap = document.createElement('div');
+  wrap.className = 'product-row';
+  wrap.dataset.rowId = rowId;
+  wrap.innerHTML = `
+    <div class="product-row-fields">
+      <input class="product-name-input" placeholder="Ej: Maceta hexagonal" value="${producto ? escapeAttr(producto.nombre) : ''}" oninput="recalcTotal()">
+      <div class="product-row-line2">
+        <input class="product-qty-input" type="number" min="1" placeholder="Cant." value="${producto ? producto.cantidad : 1}" oninput="recalcTotal()">
+        <input class="product-price-input" type="number" min="0" inputmode="decimal" placeholder="Precio unitario" value="${producto ? producto.precio : ''}" oninput="recalcTotal()">
+      </div>
+    </div>
+    <button type="button" class="remove-product-btn" onclick="removeProductRow('${rowId}')">✕</button>
+  `;
+  document.getElementById('productosList').appendChild(wrap);
+  recalcTotal();
+}
+function removeProductRow(rowId){
+  const el = document.querySelector(`.product-row[data-row-id="${rowId}"]`);
+  if(el) el.remove();
+  recalcTotal();
+}
+function leerProductosDelForm(){
+  return [...document.querySelectorAll('#productosList .product-row')].map(row=>{
+    const nombre = row.querySelector('.product-name-input').value.trim();
+    const cantidad = Number(row.querySelector('.product-qty-input').value) || 1;
+    const precio = Number(row.querySelector('.product-price-input').value) || 0;
+    return { id: uid(), nombre, cantidad, precio };
+  }).filter(p => p.nombre);
+}
+function recalcTotal(){
+  const total = leerProductosDelForm().reduce((s,p)=> s + p.precio * p.cantidad, 0);
+  document.getElementById('pedidoTotalPreview').textContent = '$' + total.toLocaleString('es-AR');
+}
+function escapeAttr(str){ return (str||'').replace(/"/g,'&quot;'); }
+
+function openPedidoForm(id){
+  document.getElementById('pedidoSheetTitle').textContent = id ? 'Editar pedido' : 'Nuevo pedido';
+  document.getElementById('pedidoId').value = id || '';
+  const clientesBase = clientesFuente();
+  const select = document.getElementById('pedidoCliente');
+  select.innerHTML = clientesBase.length
+    ? clientesBase.map(c=>`<option value="${c.id}">${escapeHtml(c.nombre)}</option>`).join('')
+    : '<option value="">— Cargá un cliente primero —</option>';
+  const o = id ? ordersFuente().find(x=>x.id===id) : null;
+  if(o) select.value = o.clienteId;
+  document.getElementById('pedidoFecha').value = o?.fecha || '';
+  document.getElementById('pedidoEstado').value = o?.estado || 'wip';
+
+  document.getElementById('productosList').innerHTML = '';
+  if(o && o.items && o.items.length){
+    o.items.forEach(p => addProductRow(p));
+  }else{
+    addProductRow(); // arranca con una fila vacía lista para cargar
+  }
+  recalcTotal();
+  openSheet('sheetPedido');
+}
+
+async function savePedido(){
+  const clienteId = document.getElementById('pedidoCliente').value;
+  if(!clienteId){ alert('Elegí un cliente (o cargá uno primero)'); return; }
+  const items = leerProductosDelForm();
+  if(items.length === 0){ alert('Agregá al menos un producto con su nombre'); return; }
+  const id = document.getElementById('pedidoId').value;
+  const data = {
+    clienteId,
+    items,
+    fecha: document.getElementById('pedidoFecha').value,
+    estado: document.getElementById('pedidoEstado').value,
+  };
+
+  if(casaMatrizModo){
+    if(!id){ alert('Casa matriz no carga pedidos nuevos, solo edita los que ya subieron los vendedores.'); return; }
+    await guardarOverrideCasaMatriz('orders', id, data);
+    closeSheet('sheetPedido');
+    return;
+  }
+
+  if(id){
+    const idx = orders.findIndex(o=>o.id===id);
+    orders[idx] = { ...orders[idx], ...data };
+  }else{
+    orders.push({ id: uid(), createdAt: Date.now(), vendedor: vendorName || null, ...data });
+  }
+  await persist('orders', orders);
+  renderOrders();
+  renderClients();
+  closeSheet('sheetPedido');
+}
+
+async function cycleStatus(id){
+  const order_states = ['wip','ready','done'];
+  if(casaMatrizModo){
+    const o = cmConsolidado.orders.find(x=>x.id===id);
+    if(!o) return;
+    const nuevoEstado = order_states[(order_states.indexOf(o.estado)+1) % 3];
+    await guardarOverrideCasaMatriz('orders', id, { estado: nuevoEstado });
+    return;
+  }
+  const order = orders.find(o=>o.id===id);
+  order.estado = order_states[(order_states.indexOf(order.estado)+1) % 3];
+  await persist('orders', orders);
+  renderOrders();
+}
+
+/* ---------- PROSPECTOS ---------- */
+function renderProspects(){
+  document.getElementById('prospectCount').textContent = prospects.length;
+  const list = document.getElementById('prospectList');
+  if(prospects.length === 0){
+    list.innerHTML = emptyState('📍', 'Sin lugares anotados todavía', 'Cuando veas un local que te parezca cliente potencial, anotalo acá al toque');
+    return;
+  }
+  const sorted = [...prospects].sort((a,b)=> b.createdAt - a.createdAt);
+  list.innerHTML = sorted.map(p=>`
+    <div class="card prospect-card">
+      <div class="prospect-pin">📍</div>
+      <div style="flex:1;">
+        <div class="prospect-name">${escapeHtml(p.nombre)}</div>
+        ${p.nota ? `<div class="prospect-note">${escapeHtml(p.nota)}</div>` : ''}
+        <div class="prospect-date">${formatDate(new Date(p.createdAt).toISOString().slice(0,10))}</div>
+      </div>
+      <button class="btn btn-danger" style="flex:none;padding:6px 10px;font-size:12px;" onclick="deleteProspecto('${p.id}')">✕</button>
+    </div>
+  `).join('');
+}
+
+function openProspectoForm(){
+  document.getElementById('prospectoNombre').value = '';
+  document.getElementById('prospectoNota').value = '';
+  openSheet('sheetProspecto');
+}
+
+async function saveProspecto(){
+  const nombre = document.getElementById('prospectoNombre').value.trim();
+  if(!nombre){ alert('Poné el nombre o dirección del lugar'); return; }
+  prospects.push({
+    id: uid(),
+    nombre,
+    nota: document.getElementById('prospectoNota').value.trim(),
+    createdAt: Date.now(),
+    lat: null, lng: null // TODO(Maps): completar cuando se integre geolocalización
+  });
+  await persist('prospects', prospects);
+  renderProspects();
+  closeSheet('sheetProspecto');
+}
+
+async function deleteProspecto(id){
+  prospects = prospects.filter(p=>p.id!==id);
+  await persist('prospects', prospects);
+  renderProspects();
+}
+
+/* ---------- NAV / SHEETS / HELPERS ---------- */
+const headerInfo = {
+  clientes: { title:'Clientes', tag:'Gestioná tu negocio desde el celular' },
+  pedidos: { title:'Pedidos', tag:'Seguimiento de impresiones en curso' },
+  prospectos: { title:'Posibles clientes', tag:'Lugares que viste y te parecieron una oportunidad' },
+};
+let currentView = 'clientes';
+
+document.querySelectorAll('.nav-btn').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+    currentView = btn.dataset.view;
+    document.getElementById('view-'+currentView).classList.add('active');
+    document.getElementById('headerTitle').textContent = headerInfo[currentView].title;
+    document.getElementById('headerTag').textContent = headerInfo[currentView].tag;
+  });
+});
+
+document.getElementById('fabBtn').addEventListener('click', ()=>{
+  if(currentView === 'clientes') openClienteForm();
+  else if(currentView === 'pedidos') openPedidoForm();
+  else openProspectoForm();
+});
+
+function openSheet(id){ document.getElementById(id).classList.add('active'); }
+function closeSheet(id){ document.getElementById(id).classList.remove('active'); }
+document.querySelectorAll('.sheet-backdrop').forEach(bd=>{
+  bd.addEventListener('click', e=>{ if(e.target === bd) bd.classList.remove('active'); });
+});
+
+function emptyState(glyph, title, sub){
+  return `<div class="empty"><div class="glyph">${glyph}</div><p style="font-weight:600;color:var(--ink);">${title}</p><p>${sub}</p></div>`;
+}
+function detailRow(label, value){
+  return `<div class="detail-row"><span class="detail-label">${label}</span><span class="detail-value">${escapeHtml(value)}</span></div>`;
+}
+function phoneRow(telefono){
+  const digits = telefono.replace(/[^\d]/g, '');
+  return `
+    <div class="detail-row detail-row-tap" onclick="abrirWhatsapp('${digits}')">
+      <span class="detail-label">Teléfono</span>
+      <span class="detail-value">
+        <span class="wa-icon">💬</span>${escapeHtml(telefono)}
+      </span>
+    </div>`;
+}
+function abrirWhatsapp(digits){
+  if(!digits){ alert('Este cliente no tiene teléfono cargado.'); return; }
+  window.open(`https://wa.me/${digits}`, '_blank');
+}
+function escapeHtml(str){
+  const d = document.createElement('div');
+  d.textContent = str ?? '';
+  return d.innerHTML;
+}
+function formatDate(iso){
+  if(!iso) return '';
+  const [y,m,d] = iso.split('-');
+  return `${d}/${m}`;
+}
+
+/* =========================================================
+   OVERRIDES (ajustes de casa matriz sobre datos del vendedor)
+   ========================================================= */
+function aplicarOverride(record, tipo){
+  const ov = overridesData?.[tipo]?.[record.id];
+  if(!ov) return record;
+  return { ...record, ...ov.campos, _cmOverride: true, _cmAt: ov._at };
+}
+
+async function guardarOverrideCasaMatriz(tipo, id, campos){
+  if(!overridesData[tipo]) overridesData[tipo] = {};
+  const previo = overridesData[tipo][id]?.campos || {};
+  overridesData[tipo][id] = { campos: { ...previo, ...campos }, _at: Date.now() };
+  localStorage.setItem(STORAGE_PREFIX + 'overridesCache', JSON.stringify(overridesData));
+  // Actualiza la vista consolidada al toque, sin esperar al próximo ciclo de sync
+  const arr = tipo === 'clients' ? cmConsolidado.clients : cmConsolidado.orders;
+  const idx = arr.findIndex(r=>r.id===id);
+  if(idx>-1) arr[idx] = { ...arr[idx], ...campos, _cmOverride:true, _cmAt: Date.now() };
+  renderAll();
+  if(driveAccessToken && casaMatrizOverridesFileId){
+    try{ await driveActualizarArchivo(casaMatrizOverridesFileId, { app:'taller3d_overrides', overrides: overridesData }); }
+    catch(e){ console.warn('No se pudo subir el override a Drive todavía, se reintenta en el próximo sync', e); }
+  }
+}
+
+function vendorChip(name){
+  if(!name) return '';
+  return `<span class="vendor-chip mono">${escapeHtml(name)}</span>`;
+}
+function overrideChip(){
+  return `<span class="override-chip" title="Actualizado desde casa matriz">🏢</span>`;
+}
+function renderCmFilterBar(containerId){
+  const el = document.getElementById(containerId);
+  if(!el) return;
+  if(!casaMatrizModo || casaMatrizVendedores.length === 0){ el.innerHTML = ''; return; }
+  const chips = [{nombre:'', label:'Todos'}, ...casaMatrizVendedores.map(v=>({nombre:v.nombre, label:v.nombre}))];
+  el.innerHTML = `<div class="cm-filter-wrap">${chips.map(c=>`
+    <button type="button" class="cm-filter-chip ${cmFiltroVendedor===c.nombre?'active':''}" onclick="filtrarPorVendedor('${escapeAttr(c.nombre)}')">${escapeHtml(c.label)}</button>
+  `).join('')}</div>`;
+}
+function filtrarPorVendedor(nombre){
+  cmFiltroVendedor = nombre;
+  renderAll();
+}
+
+/* =========================================================
+   MODO CASA MATRIZ (clave, activación, gestión de vendedores)
+   ========================================================= */
+function abrirClaveCM(){
+  document.getElementById('claveCMInput').value = '';
+  document.getElementById('claveCMError').textContent = '';
+  openSheet('sheetClaveCM');
+}
+function verificarClaveCM(){
+  const val = document.getElementById('claveCMInput').value;
+  if(val === CM_PASSWORD){
+    casaMatrizUnlocked = true;
+    localStorage.setItem(STORAGE_PREFIX + 'cmUnlocked', 'true');
+    closeSheet('sheetClaveCM');
+    actualizarUIModo();
+    activarModoCasaMatriz();
+  }else{
+    document.getElementById('claveCMError').textContent = 'Clave incorrecta.';
+  }
+}
+function revocarCasaMatrizDeEsteDispositivo(){
+  if(!confirm('¿Quitar el acceso de casa matriz en este dispositivo? Vas a tener que volver a ingresar la clave para entrar de nuevo.')) return;
+  casaMatrizUnlocked = false;
+  casaMatrizModo = false;
+  localStorage.removeItem(STORAGE_PREFIX + 'cmUnlocked');
+  localStorage.removeItem(STORAGE_PREFIX + 'cmModo');
+  actualizarUIModo();
+  renderAll();
+}
+function activarModoCasaMatriz(){
+  casaMatrizModo = true;
+  localStorage.setItem(STORAGE_PREFIX + 'cmModo', 'true');
+  actualizarUIModo();
+  iniciarSincronizacionAutomatica();
+  sincronizarCasaMatriz();
+  closeSheet('sheetBackup');
+}
+function salirModoCasaMatriz(){
+  casaMatrizModo = false;
+  localStorage.setItem(STORAGE_PREFIX + 'cmModo', 'false');
+  actualizarUIModo();
+  iniciarSincronizacionAutomatica();
+  renderAll();
+}
+
+function abrirVendedorForm(id){
+  editandoVendedorId = id || null;
+  const v = id ? casaMatrizVendedores.find(x=>x.id===id) : null;
+  document.getElementById('vendedorSheetTitle').textContent = id ? 'Editar vendedor' : 'Nuevo vendedor';
+  document.getElementById('vendedorNombre').value = v?.nombre || '';
+  document.getElementById('vendedorDriveLink').value = v?.driveFileId || '';
+  openSheet('sheetVendedor');
+}
+function extraerDriveFileId(input){
+  const s = (input || '').trim();
+  let m = s.match(/\/d\/([a-zA-Z0-9_-]{10,})/);
+  if(m) return m[1];
+  m = s.match(/[?&]id=([a-zA-Z0-9_-]{10,})/);
+  if(m) return m[1];
+  if(/^[a-zA-Z0-9_-]{10,}$/.test(s)) return s;
+  return '';
+}
+async function guardarVendedor(){
+  const nombre = document.getElementById('vendedorNombre').value.trim();
+  const fileId = extraerDriveFileId(document.getElementById('vendedorDriveLink').value);
+  if(!nombre){ alert('Poné el nombre del vendedor'); return; }
+  if(!fileId){ alert('No pude reconocer el link o ID del archivo de Drive. Pegá el link para compartir completo, o el ID del archivo.'); return; }
+  if(editandoVendedorId){
+    const idx = casaMatrizVendedores.findIndex(v=>v.id===editandoVendedorId);
+    casaMatrizVendedores[idx] = { ...casaMatrizVendedores[idx], nombre, driveFileId: fileId };
+  }else{
+    casaMatrizVendedores.push({ id: uid(), nombre, driveFileId: fileId });
+  }
+  localStorage.setItem(STORAGE_PREFIX + 'cmVendedores', JSON.stringify(casaMatrizVendedores));
+  closeSheet('sheetVendedor');
+  renderVendedoresList();
+  sincronizarCasaMatriz();
+}
+async function eliminarVendedor(id){
+  if(!confirm('¿Quitar este vendedor de la vista de casa matriz? No se borra nada de su Drive.')) return;
+  casaMatrizVendedores = casaMatrizVendedores.filter(v=>v.id!==id);
+  localStorage.setItem(STORAGE_PREFIX + 'cmVendedores', JSON.stringify(casaMatrizVendedores));
+  renderVendedoresList();
+  sincronizarCasaMatriz();
+}
+function renderVendedoresList(){
+  const el = document.getElementById('vendedoresList');
+  if(!el) return;
+  el.innerHTML = casaMatrizVendedores.length
+    ? casaMatrizVendedores.map(v=>`
+      <div class="vendedor-row">
+        <span>${escapeHtml(v.nombre)}</span>
+        <div class="vendedor-row-actions">
+          <button class="icon-btn-sm" onclick="abrirVendedorForm('${v.id}')">✏️</button>
+          <button class="icon-btn-sm" onclick="eliminarVendedor('${v.id}')">✕</button>
+        </div>
+      </div>`).join('')
+    : '<p style="color:var(--ink-dim);font-size:13px;">Todavía no agregaste vendedores.</p>';
+}
+function abrirGestionVendedores(){
+  renderVendedoresList();
+  openSheet('sheetVendedores');
+}
+
+/* =========================================================
+   UI de Opciones: estado de modo / drive / casa matriz
+   ========================================================= */
+function guardarNombreVendedor(){
+  const val = document.getElementById('vendorNameInput').value.trim();
+  vendorName = val;
+  localStorage.setItem(STORAGE_PREFIX + 'vendorName', vendorName);
+  actualizarUIModo();
+}
+function actualizarUIModo(){
+  const elVendorInput = document.getElementById('vendorNameInput');
+  if(elVendorInput) elVendorInput.value = vendorName;
+
+  const elCmLocked = document.getElementById('cmSeccionBloqueada');
+  const elCmUnlocked = document.getElementById('cmSeccionDesbloqueada');
+  if(elCmLocked && elCmUnlocked){
+    elCmLocked.style.display = casaMatrizUnlocked ? 'none' : '';
+    elCmUnlocked.style.display = casaMatrizUnlocked ? '' : 'none';
+  }
+  const elModoBtn = document.getElementById('cmModoToggleBtn');
+  if(elModoBtn) elModoBtn.textContent = casaMatrizModo ? 'Volver a modo vendedor' : 'Entrar a modo casa matriz';
+
+  const banner = document.getElementById('cmBanner');
+  if(banner) banner.style.display = casaMatrizModo ? '' : 'none';
+
+  const fab = document.getElementById('fabBtn');
+  if(fab) fab.style.display = casaMatrizModo ? 'none' : '';
+
+  actualizarUIDrive(!!driveAccessToken);
+  actualizarUISync();
+
+  if(!driveConfigured()){
+    const warn = document.getElementById('driveConfigWarning');
+    if(warn) warn.style.display = '';
+  }
+}
+function actualizarUIDrive(conectado){
+  const dot = document.getElementById('driveStatusDot');
+  const label = document.getElementById('driveStatusLabel');
+  const btnConectar = document.getElementById('driveConnectBtn');
+  if(!dot) return;
+  dot.className = 'dot ' + (conectado ? 'dot-on' : 'dot-off');
+  label.textContent = conectado ? 'Conectado' : 'Desconectado';
+  if(btnConectar) btnConectar.textContent = conectado ? 'Reconectar' : 'Conectar Google Drive';
+}
+function actualizarUISync(){
+  const el = document.getElementById('lastSyncLabel');
+  if(!el) return;
+  el.textContent = lastSyncAt
+    ? 'Última sincronización: ' + new Date(lastSyncAt).toLocaleTimeString('es-AR', {hour:'2-digit', minute:'2-digit'})
+    : 'Todavía no sincronizó';
+}
+async function sincronizarAhora(){
+  const btn = document.getElementById('syncNowBtn');
+  if(btn){ btn.disabled = true; btn.textContent = 'Sincronizando...'; }
+  try{
+    if(casaMatrizModo) await sincronizarCasaMatriz();
+    else await sincronizarVendedor();
+  }finally{
+    if(btn){ btn.disabled = false; btn.textContent = 'Sincronizar ahora'; }
+  }
+}
+
+/* =========================================================
+   GOOGLE DRIVE — carga de scripts, auth, lectura/escritura
+   ========================================================= */
+function cargarScriptsGoogle(){
+  return new Promise((resolve, reject)=>{
+    if(window.gapi && window.google?.accounts?.oauth2){ resolve(); return; }
+    let pending = 2;
+    const done = ()=>{ if(--pending===0) resolve(); };
+    const s1 = document.createElement('script');
+    s1.src = 'https://apis.google.com/js/api.js';
+    s1.onload = ()=> gapi.load('client', done);
+    s1.onerror = reject;
+    document.head.appendChild(s1);
+    const s2 = document.createElement('script');
+    s2.src = 'https://accounts.google.com/gsi/client';
+    s2.onload = done;
+    s2.onerror = reject;
+    document.head.appendChild(s2);
+  });
+}
+async function initDrive(){
+  if(!driveConfigured()){
+    alert('Falta configurar Google Drive en el código de la app (buscá DRIVE_CONFIG al principio del script, tiene las instrucciones).');
+    return false;
+  }
+  await cargarScriptsGoogle();
+  await gapi.client.init({ apiKey: DRIVE_CONFIG.API_KEY, discoveryDocs:['https://www.googleapis.com/discovery/v1/apis/drive/v3/rest'] });
+  if(!driveTokenClient){
+    driveTokenClient = google.accounts.oauth2.initTokenClient({
+      client_id: DRIVE_CONFIG.CLIENT_ID,
+      scope: DRIVE_CONFIG.SCOPES,
+      callback: ()=>{}
+    });
+  }
+  return true;
+}
+function conectarDrive(interactive){
+  return initDrive().then(ok=>{
+    if(!ok) return false;
+    return new Promise(resolve=>{
+      driveTokenClient.callback = (resp)=>{
+        if(resp.error){ console.warn('Drive auth', resp); actualizarUIDrive(false); resolve(false); return; }
+        driveAccessToken = resp.access_token;
+        gapi.client.setToken({ access_token: driveAccessToken });
+        localStorage.setItem(STORAGE_PREFIX + 'driveGranted', 'true');
+        actualizarUIDrive(true);
+        resolve(true);
+      };
+      driveTokenClient.requestAccessToken({ prompt: interactive ? 'consent' : '' });
+    });
+  });
+}
+function desconectarDrive(){
+  if(driveAccessToken && window.google?.accounts?.oauth2){
+    google.accounts.oauth2.revoke(driveAccessToken, ()=>{});
+  }
+  driveAccessToken = null;
+  localStorage.removeItem(STORAGE_PREFIX + 'driveGranted');
+  actualizarUIDrive(false);
+}
+async function driveBuscarArchivo(nombre){
+  const res = await gapi.client.drive.files.list({ q:`name='${nombre}' and trashed=false`, fields:'files(id,name)', spaces:'drive' });
+  return res.result.files?.[0] || null;
+}
+async function driveCrearArchivo(nombre, contenidoObj){
+  const boundary = 'taller3dboundary';
+  const metadata = { name: nombre, mimeType:'application/json' };
+  const body =
+    `--${boundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n${JSON.stringify(metadata)}\r\n` +
+    `--${boundary}\r\nContent-Type: application/json\r\n\r\n${JSON.stringify(contenidoObj)}\r\n--${boundary}--`;
+  const res = await gapi.client.request({
+    path:'/upload/drive/v3/files', method:'POST', params:{ uploadType:'multipart' },
+    headers:{ 'Content-Type': `multipart/related; boundary=${boundary}` }, body
+  });
+  return res.result.id;
+}
+async function driveActualizarArchivo(fileId, contenidoObj){
+  await gapi.client.request({
+    path:`/upload/drive/v3/files/${fileId}`, method:'PATCH', params:{ uploadType:'media' },
+    body: JSON.stringify(contenidoObj)
+  });
+}
+async function driveLeerArchivo(fileId){
+  const res = await gapi.client.drive.files.get({ fileId, alt:'media' });
+  if(res.result && typeof res.result === 'object') return res.result;
+  return JSON.parse(res.body);
+}
+async function driveCompartirLectorPublico(fileId){
+  await gapi.client.drive.permissions.create({ fileId, resource:{ role:'reader', type:'anyone' } });
+}
+function slug(s){
+  return (s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,'') || 'x';
+}
+
+/* ---------- Sincronización: modo vendedor ---------- */
+async function subirDatosPropios(){
+  const payload = {
+    app: 'taller3d', version: 1, vendedor: vendorName,
+    exportedAt: new Date().toISOString(),
+    clients, orders, prospects,
+    overridesFileId: overridesFileId || undefined
+  };
+  const nombreArchivo = `ludiverso3d_${slug(vendorName || 'vendedor')}.json`;
+  if(!driveFileId){
+    const existente = await driveBuscarArchivo(nombreArchivo);
+    driveFileId = existente ? existente.id : await driveCrearArchivo(nombreArchivo, payload);
+    localStorage.setItem(STORAGE_PREFIX + 'driveFileId', driveFileId);
+  }
+  await driveActualizarArchivo(driveFileId, payload);
+}
+async function leerOverridesPropios(){
+  if(!overridesFileId) return;
+  try{
+    const data = await driveLeerArchivo(overridesFileId);
+    overridesData = (data && data.overrides) ? data.overrides : { clients:{}, orders:{} };
+    localStorage.setItem(STORAGE_PREFIX + 'overridesCache', JSON.stringify(overridesData));
+  }catch(e){ console.warn('No se pudieron leer los overrides de casa matriz', e); }
+}
+async function sincronizarVendedor(){
+  if(!driveConfigured()) return;
+  if(!driveAccessToken){ const ok = await conectarDrive(false); if(!ok) return; }
+  try{
+    await subirDatosPropios();
+    await leerOverridesPropios();
+    // si casa matriz le avisó dónde está el archivo propio, recién ahora lo tenemos en `driveFileId`'s payload leído de vuelta
+    lastSyncAt = Date.now();
+  }catch(e){ console.warn('Error sincronizando', e); }
+  renderAll();
+  actualizarUISync();
+}
+
+/* ---------- Sincronización: modo casa matriz ---------- */
+async function sincronizarCasaMatriz(){
+  if(!driveConfigured()) return;
+  if(!driveAccessToken){ const ok = await conectarDrive(false); if(!ok) return; }
+  try{
+    const nombreOverrides = 'ludiverso3d_casamatriz_overrides.json';
+    if(!casaMatrizOverridesFileId){
+      const existente = await driveBuscarArchivo(nombreOverrides);
+      casaMatrizOverridesFileId = existente ? existente.id : await driveCrearArchivo(nombreOverrides, { app:'taller3d_overrides', overrides: overridesData });
+      await driveCompartirLectorPublico(casaMatrizOverridesFileId);
+      localStorage.setItem(STORAGE_PREFIX + 'cmOverridesFileId', casaMatrizOverridesFileId);
+    }else{
+      await driveActualizarArchivo(casaMatrizOverridesFileId, { app:'taller3d_overrides', overrides: overridesData });
+    }
+
+    const clientesAll = [], ordersAll = [];
+    for(const v of casaMatrizVendedores){
+      if(!v.driveFileId) continue;
+      try{
+        const data = await driveLeerArchivo(v.driveFileId);
+        (data.clients||[]).forEach(c => clientesAll.push({ ...aplicarOverride(c,'clients'), vendedor: v.nombre }));
+        (data.orders||[]).forEach(o => ordersAll.push({ ...aplicarOverride(o,'orders'), vendedor: v.nombre }));
+        if(data.overridesFileId !== casaMatrizOverridesFileId){
+          data.overridesFileId = casaMatrizOverridesFileId;
+          await driveActualizarArchivo(v.driveFileId, data);
+        }
+      }catch(e){ console.warn('No se pudo leer al vendedor', v.nombre, e); }
+    }
+    cmConsolidado = { clients: clientesAll, orders: ordersAll };
+    lastSyncAt = Date.now();
+  }catch(e){ console.warn('Error sincronizando casa matriz', e); }
+  renderAll();
+  actualizarUISync();
+}
+
+function iniciarSincronizacionAutomatica(){
+  if(syncTimer) clearInterval(syncTimer);
+  if(!driveConfigured()) return;
+  syncTimer = setInterval(()=> casaMatrizModo ? sincronizarCasaMatriz() : sincronizarVendedor(), 5*60*1000);
+  if(localStorage.getItem(STORAGE_PREFIX + 'driveGranted') === 'true'){
+    conectarDrive(false).then(ok=>{ if(ok) (casaMatrizModo ? sincronizarCasaMatriz() : sincronizarVendedor()); });
+  }
+}
+
+loadAll();
+</script>
+<!-- Sheet: copia de seguridad -->
+<div class="sheet-backdrop" id="sheetBackup">
+  <div class="sheet">
+    <div class="sheet-handle"></div>
+    <h3>Copia de seguridad</h3>
+    <p style="font-size:13px;color:var(--ink-dim);margin:-8px 0 16px;">
+      Los datos ya se guardan solos en este navegador. Usá esto además, como respaldo, por si algún día se borran o cambiás de celular.
+    </p>
+
+    <p id="driveConfigWarning" style="display:none;font-size:12px;color:var(--danger);background:rgba(242,97,97,.1);border:1px solid var(--danger);border-radius:10px;padding:10px 12px;margin:0 0 14px;">
+      ⚠️ Falta configurar Google Drive en el código de la app (DRIVE_CONFIG, al principio del script) para poder sincronizar entre vendedores y casa matriz.
+    </p>
+
+    <div class="opt-section">
+      <h4>Tu identificación</h4>
+      <div class="field" style="margin-bottom:8px;">
+        <input id="vendorNameInput" placeholder="Ej: Juan, Sucursal Norte">
+      </div>
+      <button class="btn btn-secondary" style="width:100%;" onclick="guardarNombreVendedor()">Guardar identificación</button>
+    </div>
+
+    <div class="opt-section">
+      <h4>Google Drive</h4>
+      <div class="opt-row">
+        <span><span class="dot dot-off" id="driveStatusDot"></span><span id="driveStatusLabel">Desconectado</span></span>
+        <button class="link-btn" id="driveConnectBtn" onclick="conectarDrive(true)">Conectar Google Drive</button>
+      </div>
+      <div class="opt-row">
+        <span id="lastSyncLabel" style="color:var(--ink-dim);font-size:12px;">Todavía no sincronizó</span>
+        <button class="link-btn" id="syncNowBtn" onclick="sincronizarAhora()">Sincronizar ahora</button>
+      </div>
+      <div class="opt-row" style="margin-top:2px;">
+        <span></span>
+        <button class="link-btn" onclick="closeSheet('sheetBackup'); openSheet('sheetInstrucciones');">¿Cómo sincronizo?</button>
+      </div>
+      <div class="opt-row" style="margin-top:2px;">
+        <span></span>
+        <button class="link-btn" style="color:var(--danger);" onclick="desconectarDrive()">Desconectar</button>
+      </div>
+    </div>
+
+    <div class="opt-section" id="cmSeccionBloqueada">
+      <h4>Casa matriz</h4>
+      <button class="link-btn" onclick="abrirClaveCM()">¿Sos casa matriz? Ingresar clave</button>
+    </div>
+
+    <div class="opt-section" id="cmSeccionDesbloqueada" style="display:none;">
+      <h4>Casa matriz</h4>
+      <button class="btn btn-primary" id="cmModoToggleBtn" style="width:100%;margin-bottom:8px;" onclick="casaMatrizModo ? salirModoCasaMatriz() : activarModoCasaMatriz()">Entrar a modo casa matriz</button>
+      <button class="btn btn-secondary" style="width:100%;margin-bottom:8px;" onclick="abrirGestionVendedores()">Gestionar vendedores</button>
+      <button class="link-btn" style="color:var(--danger);" onclick="revocarCasaMatrizDeEsteDispositivo()">Quitar acceso de este dispositivo</button>
+    </div>
+
+    <div class="font-size-control">
+      <span class="field-label-inline">Tamaño de letra</span>
+      <div class="font-size-buttons">
+        <button class="fs-btn" onclick="ajustarFuente(-10)">A−</button>
+        <span class="fs-value mono" id="fsValue">100%</span>
+        <button class="fs-btn" onclick="ajustarFuente(10)">A+</button>
+      </div>
+    </div>
+
+    <button class="btn btn-primary" style="width:100%;margin-bottom:10px;" onclick="exportarDatos()">⬇️ Exportar copia (.json)</button>
+
+    <label class="btn btn-secondary" style="width:100%;display:flex;align-items:center;justify-content:center;cursor:pointer;">
+      ⬆️ Importar copia
+      <input type="file" id="importInput" accept="application/json" style="display:none;" onchange="importarDatos(event)">
+    </label>
+
+    <p id="importStatus" style="font-size:12.5px;color:var(--ink-dim);margin-top:10px;"></p>
+
+    <div class="sheet-actions">
+      <button class="btn btn-secondary" style="flex:1;" onclick="closeSheet('sheetBackup')">Cerrar</button>
+    </div>
+  </div>
+</div>
+
+<script>
+document.getElementById('backupBtn').addEventListener('click', ()=> openSheet('sheetBackup'));
+
+/* --- Tamaño de letra --- */
+const FS_KEY = STORAGE_PREFIX + 'fontScale';
+let fontScale = Number(localStorage.getItem(FS_KEY)) || 100;
+
+function aplicarFuente(){
+  document.body.style.zoom = (fontScale / 100);
+  const el = document.getElementById('fsValue');
+  if(el) el.textContent = fontScale + '%';
+}
+function ajustarFuente(delta){
+  fontScale = Math.min(150, Math.max(80, fontScale + delta));
+  localStorage.setItem(FS_KEY, fontScale);
+  aplicarFuente();
+}
+aplicarFuente();
+
+function exportarDatos(){
+  const payload = {
+    app: 'taller3d',
+    version: 1,
+    exportedAt: new Date().toISOString(),
+    clients, orders, prospects
+  };
+  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  const fecha = new Date().toISOString().slice(0,10);
+  a.href = url;
+  a.download = `taller3d-backup-${fecha}.json`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+async function importarDatos(event){
+  const file = event.target.files[0];
+  const status = document.getElementById('importStatus');
+  if(!file) return;
+  try{
+    const text = await file.text();
+    const data = JSON.parse(text);
+    if(!data || data.app !== 'taller3d'){
+      status.textContent = '⚠️ Este archivo no parece ser una copia de esta app.';
+      status.style.color = 'var(--danger)';
+      return;
+    }
+    const resumen = `${data.clients?.length||0} clientes, ${data.orders?.length||0} pedidos, ${data.prospects?.length||0} prospectos`;
+    if(!confirm(`Se va a REEMPLAZAR todo lo que tenés ahora por esta copia (${resumen}). ¿Continuar?`)) {
+      event.target.value = '';
+      return;
+    }
+    clients = Array.isArray(data.clients) ? data.clients : [];
+    orders = Array.isArray(data.orders) ? data.orders : [];
+    prospects = Array.isArray(data.prospects) ? data.prospects : [];
+    await persist('clients', clients);
+    await persist('orders', orders);
+    await persist('prospects', prospects);
+    renderAll();
+    status.textContent = `✅ Importado: ${resumen}`;
+    status.style.color = 'var(--ok)';
+  }catch(e){
+    console.error(e);
+    status.textContent = '⚠️ No se pudo leer el archivo. ¿Es un .json exportado desde acá?';
+    status.style.color = 'var(--danger)';
+  }
+  event.target.value = '';
+}
+</script>
+
+</body>
+</html>
