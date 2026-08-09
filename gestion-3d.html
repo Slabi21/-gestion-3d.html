@@ -7,6 +7,15 @@
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxOTIgMTkyIj4KPHJlY3Qgd2lkdGg9IjE5MiIgaGVpZ2h0PSIxOTIiIHJ4PSI0MCIgZmlsbD0iIzFiMWQyMSIvPgo8ZyBzdHJva2U9IiNmZjdhMjkiIHN0cm9rZS13aWR0aD0iNyIgZmlsbD0ibm9uZSI+CjxlbGxpcHNlIGN4PSI5NiIgY3k9IjY0IiByeD0iNDgiIHJ5PSIxNyIvPgo8ZWxsaXBzZSBjeD0iOTYiIGN5PSI4OCIgcng9IjQ4IiByeT0iMTciLz4KPGVsbGlwc2UgY3g9Ijk2IiBjeT0iMTEyIiByeD0iNDgiIHJ5PSIxNyIvPgo8L2c+Cjx0ZXh0IHg9Ijk2IiB5PSIxNjAiIGZvbnQtZmFtaWx5PSJtb25vc3BhY2Usc2Fucy1zZXJpZiIgZm9udC1zaXplPSIzNiIgZm9udC13ZWlnaHQ9IjcwMCIgZmlsbD0iI2VlZjBmMiIgdGV4dC1hbmNob3I9Im1pZGRsZSI+M0Q8L3RleHQ+Cjwvc3ZnPg==">
 <link rel="apple-touch-icon" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxOTIgMTkyIj4KPHJlY3Qgd2lkdGg9IjE5MiIgaGVpZ2h0PSIxOTIiIHJ4PSI0MCIgZmlsbD0iIzFiMWQyMSIvPgo8ZyBzdHJva2U9IiNmZjdhMjkiIHN0cm9rZS13aWR0aD0iNyIgZmlsbD0ibm9uZSI+CjxlbGxpcHNlIGN4PSI5NiIgY3k9IjY0IiByeD0iNDgiIHJ5PSIxNyIvPgo8ZWxsaXBzZSBjeD0iOTYiIGN5PSI4OCIgcng9IjQ4IiByeT0iMTciLz4KPGVsbGlwc2UgY3g9Ijk2IiBjeT0iMTEyIiByeD0iNDgiIHJ5PSIxNyIvPgo8L2c+Cjx0ZXh0IHg9Ijk2IiB5PSIxNjAiIGZvbnQtZmFtaWx5PSJtb25vc3BhY2Usc2Fucy1zZXJpZiIgZm9udC1zaXplPSIzNiIgZm9udC13ZWlnaHQ9IjcwMCIgZmlsbD0iI2VlZjBmMiIgdGV4dC1hbmNob3I9Im1pZGRsZSI+M0Q8L3RleHQ+Cjwvc3ZnPg==">
 <meta name="theme-color" content="#1b1d21">
+<script>
+  // Guarda una copia local de la app para que abra sin internet.
+  // Requiere que sw.js esté subido en la misma carpeta que este HTML.
+  if('serviceWorker' in navigator){
+    window.addEventListener('load', ()=>{
+      navigator.serviceWorker.register('./sw.js').catch(e=>console.warn('No se pudo registrar el modo offline (sw.js)', e));
+    });
+  }
+</script>
 <style>
   :root{
     --bg: #1b1d21;
@@ -659,7 +668,7 @@
       <h4><span class="instr-icon">🌐</span>Paso 1 — Subir la app a internet</h4>
       <p class="instr-sub">Google no deja conectar con Drive si la app está abierta como un archivo suelto en el celular. Hay que alojarla en una dirección web, y GitHub Pages lo hace gratis.</p>
       <div class="instr-step"><span class="instr-num">1</span><span class="instr-text">Crear una cuenta gratis en <b>github.com</b> (si no tenés una).</span></div>
-      <div class="instr-step"><span class="instr-num">2</span><span class="instr-text">Crear un repositorio nuevo y subir ahí el archivo <span class="instr-code">gestion-3d.html</span>.</span></div>
+      <div class="instr-step"><span class="instr-num">2</span><span class="instr-text">Crear un repositorio nuevo y subir ahí <b>dos archivos</b>: <span class="instr-code">gestion-3d.html</span> y <span class="instr-code">sw.js</span> (van juntos, en la misma carpeta — el segundo es el que permite que la app abra sin internet).</span></div>
       <div class="instr-step"><span class="instr-num">3</span><span class="instr-text">En ese repositorio ir a <b>Settings → Pages</b> y activarlo. GitHub te va a dar una dirección propia, algo como <span class="instr-code">https://tu-usuario.github.io/tu-repo/gestion-3d.html</span>.</span></div>
       <div class="instr-step"><span class="instr-num">4</span><span class="instr-text">Esa dirección es la que hay que abrir en el celular de ahora en más (y la que se agrega a la pantalla de inicio), en vez del archivo descargado.</span></div>
     </div>
@@ -684,6 +693,14 @@
       <div class="instr-step"><span class="instr-num">1</span><span class="instr-text">Cada vendedor toca <b>Conectar Google Drive</b> en Opciones y autoriza con su cuenta de Google (una sola vez).</span></div>
       <div class="instr-step"><span class="instr-num">2</span><span class="instr-text">A partir de ahí, la app sube sus datos solos cada <b>5 minutos</b> mientras haya internet. También se puede tocar <b>Sincronizar ahora</b> para forzarlo al toque.</span></div>
       <div class="instr-step"><span class="instr-num">3</span><span class="instr-text">Casa matriz agrega a cada vendedor desde <b>Gestionar vendedores</b>, pegando el link para compartir del archivo que ese vendedor subió a su Drive (con permiso de edición para la cuenta de casa matriz).</span></div>
+    </div>
+
+    <hr class="instr-divider">
+
+    <div class="instr-group">
+      <h4><span class="instr-icon">📴</span>Sobre el modo sin internet</h4>
+      <p class="instr-sub">Cargar clientes, pedidos y prospectos funciona siempre, con o sin señal — eso nunca dependió de internet. Lo único que necesita conexión es la sincronización con Drive: si se corta, la app sigue anotando todo local y sincroniza sola en cuanto vuelve la señal.</p>
+      <p class="instr-sub" style="margin-bottom:0;">Si en algún momento subís una versión nueva del HTML a GitHub, acordate de cambiar el número que dice <span class="instr-code">CACHE_NAME</span> dentro de <span class="instr-code">sw.js</span> (por ejemplo de "v1" a "v2"), para que los celulares bajen la versión nueva en vez de seguir usando la vieja guardada.</p>
     </div>
 
     <div class="sheet-actions">
