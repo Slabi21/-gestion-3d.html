@@ -632,11 +632,10 @@
     <div class="sheet-handle"></div>
     <h3 id="vendedorSheetTitle">Nuevo vendedor</h3>
     <input type="hidden" id="vendedorId">
-    <div class="field"><label>Nombre / identificador</label><input id="vendedorNombre" placeholder="Ej: Juan, Sucursal Norte"></div>
     <div class="field">
-      <label>Link o ID del archivo de Drive del vendedor</label>
-      <input id="vendedorDriveLink" placeholder="Pegar el link para compartir o el ID del archivo">
-      <span class="field-hint">El vendedor le tiene que dar acceso de edición a este archivo a tu cuenta de Google desde su Drive, y pasarte el link.</span>
+      <label>Nombre / identificador</label>
+      <input id="vendedorNombre" placeholder="Ej: Juan, Sucursal Norte">
+      <span class="field-hint">Tiene que ser exactamente el mismo nombre que ese vendedor cargue en su propia app, en Opciones → Tu identificación.</span>
     </div>
     <div class="sheet-actions">
       <button class="btn btn-secondary" onclick="closeSheet('sheetVendedor')">Cancelar</button>
@@ -676,31 +675,31 @@
     <hr class="instr-divider">
 
     <div class="instr-group">
-      <h4><span class="instr-icon">🔑</span>Paso 2 — Credenciales de Google (una sola vez)</h4>
-      <p class="instr-sub">Son gratis. Las tiene que crear la persona que administra el negocio, y después pegarlas en el código de la app.</p>
-      <div class="instr-step"><span class="instr-num">1</span><span class="instr-text">Entrar a <b>console.cloud.google.com</b> y crear un proyecto nuevo.</span></div>
-      <div class="instr-step"><span class="instr-num">2</span><span class="instr-text">Ir a <b>APIs y servicios → Biblioteca</b> y activar <b>Google Drive API</b>.</span></div>
-      <div class="instr-step"><span class="instr-num">3</span><span class="instr-text">Ir a <b>APIs y servicios → Pantalla de consentimiento OAuth</b>, elegir tipo <b>Externo</b>, y agregar como "usuarios de prueba" el mail de Gmail de cada vendedor y el de casa matriz.</span></div>
-      <div class="instr-step"><span class="instr-num">4</span><span class="instr-text">Ir a <b>Credenciales → Crear credenciales → ID de cliente de OAuth 2.0</b>, tipo <b>Aplicación web</b>. En "Orígenes de JavaScript autorizados" pegar la dirección de GitHub Pages del Paso 1.</span></div>
-      <div class="instr-step"><span class="instr-num">5</span><span class="instr-text">Crear también una <b>Clave de API</b> (Credenciales → Crear credenciales → Clave de API).</span></div>
-      <div class="instr-step"><span class="instr-num">6</span><span class="instr-text">Abrir el archivo <span class="instr-code">gestion-3d.html</span> con un editor de texto, buscar <span class="instr-code">DRIVE_CONFIG</span> al principio del código, y pegar ahí el Client ID y la Clave de API. Volver a subir el archivo actualizado a GitHub.</span></div>
+      <h4><span class="instr-icon">🔑</span>Paso 2 — Crear el proyecto de Firebase (una sola vez)</h4>
+      <p class="instr-sub">Es gratis y no pide tarjeta de crédito. Lo tiene que crear la persona que administra el negocio, y después pegar la configuración en el código de la app.</p>
+      <div class="instr-step"><span class="instr-num">1</span><span class="instr-text">Entrar a <b>console.firebase.google.com</b> y crear un proyecto nuevo.</span></div>
+      <div class="instr-step"><span class="instr-num">2</span><span class="instr-text"><b>Compilación → Firestore Database → Crear base de datos</b>, en modo producción, eligiendo una región (ej. la más cercana a Argentina).</span></div>
+      <div class="instr-step"><span class="instr-num">3</span><span class="instr-text"><b>Compilación → Authentication → Comenzar</b>, pestaña "Sign-in method", habilitar el proveedor <b>Anónimo</b>.</span></div>
+      <div class="instr-step"><span class="instr-num">4</span><span class="instr-text">En Firestore, pestaña <b>Reglas</b>, pegar la regla que está comentada arriba de <span class="instr-code">FIREBASE_CONFIG</span> en el código, y publicar.</span></div>
+      <div class="instr-step"><span class="instr-num">5</span><span class="instr-text">Ícono de engranaje → <b>Configuración del proyecto</b> → "Tus apps" → ícono <b>&lt;/&gt;</b> (Web) → registrar la app → copiar el objeto <span class="instr-code">firebaseConfig</span> que muestra.</span></div>
+      <div class="instr-step"><span class="instr-num">6</span><span class="instr-text">Abrir <span class="instr-code">gestion-3d.html</span> con un editor de texto, buscar <span class="instr-code">FIREBASE_CONFIG</span> al principio del código, y reemplazar esos valores por los que copiaste. Volver a subir el archivo a GitHub (y subir el número de <span class="instr-code">CACHE_NAME</span> en <span class="instr-code">sw.js</span>).</span></div>
     </div>
 
     <hr class="instr-divider">
 
     <div class="instr-group">
       <h4><span class="instr-icon">🔄</span>Paso 3 — Usar la sincronización</h4>
-      <div class="instr-step"><span class="instr-num">1</span><span class="instr-text">Cada vendedor toca <b>Conectar Google Drive</b> en Opciones y autoriza con su cuenta de Google (una sola vez).</span></div>
+      <div class="instr-step"><span class="instr-num">1</span><span class="instr-text">Cada vendedor carga su nombre en Opciones → <b>Tu identificación</b> (sin login de Google, sin contraseña).</span></div>
       <div class="instr-step"><span class="instr-num">2</span><span class="instr-text">A partir de ahí, la app sube sus datos solos cada <b>5 minutos</b> mientras haya internet. También se puede tocar <b>Sincronizar ahora</b> para forzarlo al toque.</span></div>
-      <div class="instr-step"><span class="instr-num">3</span><span class="instr-text">Casa matriz agrega a cada vendedor desde <b>Gestionar vendedores</b>, pegando el link para compartir del archivo que ese vendedor subió a su Drive (con permiso de edición para la cuenta de casa matriz).</span></div>
+      <div class="instr-step"><span class="instr-num">3</span><span class="instr-text">Casa matriz agrega a cada vendedor desde <b>Gestionar vendedores</b>, cargando exactamente el mismo nombre que ese vendedor puso en su propia app.</span></div>
     </div>
 
     <hr class="instr-divider">
 
     <div class="instr-group">
       <h4><span class="instr-icon">📴</span>Sobre el modo sin internet</h4>
-      <p class="instr-sub">Cargar clientes, pedidos y prospectos funciona siempre, con o sin señal — eso nunca dependió de internet. Lo único que necesita conexión es la sincronización con Drive: si se corta, la app sigue anotando todo local y sincroniza sola en cuanto vuelve la señal.</p>
-      <p class="instr-sub" style="margin-bottom:0;">Si en algún momento subís una versión nueva del HTML a GitHub, acordate de cambiar el número que dice <span class="instr-code">CACHE_NAME</span> dentro de <span class="instr-code">sw.js</span> (por ejemplo de "v1" a "v2"), para que los celulares bajen la versión nueva en vez de seguir usando la vieja guardada.</p>
+      <p class="instr-sub">Cargar clientes, pedidos y prospectos funciona siempre, con o sin señal — eso nunca dependió de internet. Lo único que necesita conexión es la sincronización: si se corta, la app sigue anotando todo local y sincroniza sola en cuanto vuelve la señal.</p>
+      <p class="instr-sub" style="margin-bottom:0;">Si en algún momento subís una versión nueva del HTML a GitHub, acordate de cambiar el número que dice <span class="instr-code">CACHE_NAME</span> dentro de <span class="instr-code">sw.js</span> (por ejemplo de "v2" a "v3"), para que los celulares bajen la versión nueva en vez de seguir usando la vieja guardada.</p>
     </div>
 
     <div class="sheet-actions">
@@ -737,58 +736,66 @@ let orders = [];
 let prospects = [];
 
 /* =========================================================
-   GOOGLE DRIVE — CONFIGURACIÓN REQUERIDA (ver también el sheet
+   FIREBASE — CONFIGURACIÓN REQUERIDA (ver también el sheet
    de Opciones dentro de la app, que avisa si esto falta)
    ---------------------------------------------------------
-   La sincronización entre vendedores y casa matriz usa Google
-   Drive como backend, sin servidor propio. Para que funcione hay
-   que crear credenciales gratuitas en Google Cloud Console:
+   La sincronización entre vendedores y casa matriz usa Firebase
+   (Firestore, plan gratuito Spark) como backend, sin servidor
+   propio y sin pedir tarjeta de crédito. Para que funcione:
 
-   1. https://console.cloud.google.com/ → crear un proyecto.
-   2. "APIs y servicios" → "Biblioteca" → activar "Google Drive API".
-   3. "APIs y servicios" → "Pantalla de consentimiento OAuth":
-      tipo Externo; agregar como "usuarios de prueba" las cuentas
-      de Gmail de cada vendedor y de casa matriz (mientras la app
-      no esté verificada por Google, solo esas cuentas van a poder
-      autorizar el acceso).
-   4. "Credenciales" → "Crear credenciales":
-      a) "ID de cliente de OAuth 2.0" (tipo "Aplicación web"). En
-         "Orígenes de JavaScript autorizados" hay que poner el
-         dominio donde se abra este archivo. Un archivo local
-         (file://) no funciona con OAuth: conviene alojar este
-         HTML en un hosting simple (ej. GitHub Pages) y usar esa
-         URL acá.
-      b) "Clave de API" (puede dejarse sin restringir, o restringida
-         a la Google Drive API).
-   5. Pegar ambos valores abajo, en CLIENT_ID y API_KEY.
+   1. https://console.firebase.google.com/ → "Crear un proyecto".
+   2. Dentro del proyecto: "Compilación" → "Firestore Database" →
+      "Crear base de datos" → modo producción (las reglas de
+      seguridad se ajustan en el paso 4) → elegir una región
+      cercana (ej. southamerica-east1).
+   3. "Compilación" → "Authentication" → "Comenzar" → pestaña
+      "Sign-in method" → habilitar el proveedor "Anónimo". Esto
+      permite que cada celular se identifique sin pedir login de
+      Google ni contraseña.
+   4. En Firestore → pestaña "Reglas", pegar esto y publicar (deja
+      leer/escribir solo a quien esté autenticado, aunque sea de
+      forma anónima — alcanza para este uso interno):
+      rules_version = '2';
+      service cloud.firestore {
+        match /databases/{database}/documents {
+          match /{document=**} {
+            allow read, write: if request.auth != null;
+          }
+        }
+      }
+   5. Ícono de engranaje → "Configuración del proyecto" → bajar
+      hasta "Tus apps" → ícono "</>" (Web) → registrar la app
+      (no hace falta Firebase Hosting) → copiar el objeto
+      firebaseConfig que te muestra y pegarlo abajo, reemplazando
+      todo el bloque FIREBASE_CONFIG.
 
    Mientras estos valores tengan el placeholder de ejemplo, los
-   botones de Drive muestran un aviso en vez de fallar en silencio.
+   botones de sincronización muestran un aviso en vez de fallar
+   en silencio.
    ========================================================= */
-const DRIVE_CONFIG = {
-  CLIENT_ID: 'PEGAR_TU_CLIENT_ID_ACA.apps.googleusercontent.com',
-  API_KEY: 'PEGAR_TU_API_KEY_ACA',
-  SCOPES: 'https://www.googleapis.com/auth/drive'
+const FIREBASE_CONFIG = {
+  apiKey: 'PEGAR_TU_API_KEY_ACA',
+  authDomain: 'PEGAR_TU_AUTH_DOMAIN_ACA',
+  projectId: 'PEGAR_TU_PROJECT_ID_ACA',
+  storageBucket: 'PEGAR_TU_STORAGE_BUCKET_ACA',
+  messagingSenderId: 'PEGAR_TU_SENDER_ID_ACA',
+  appId: 'PEGAR_TU_APP_ID_ACA'
 };
-function driveConfigured(){
-  return !DRIVE_CONFIG.CLIENT_ID.startsWith('PEGAR_') && !DRIVE_CONFIG.API_KEY.startsWith('PEGAR_');
+function firebaseConfigured(){
+  return !FIREBASE_CONFIG.apiKey.startsWith('PEGAR_') && !FIREBASE_CONFIG.projectId.startsWith('PEGAR_');
 }
 
 const CM_PASSWORD = 'Prisma21';
 
 /* ---------- Estado de vendedor / casa matriz ---------- */
 let vendorName = '';
-let driveFileId = null;                  // archivo propio de este vendedor en su Drive
-let overridesFileId = null;              // archivo de overrides de casa matriz (lo aprende el vendedor)
 let casaMatrizUnlocked = false;          // ya se ingresó la clave alguna vez en este dispositivo
 let casaMatrizModo = false;              // viendo la app como casa matriz ahora mismo
-let casaMatrizVendedores = [];           // [{id, nombre, driveFileId}]
-let casaMatrizOverridesFileId = null;    // archivo propio de overrides en el Drive de casa matriz
+let casaMatrizVendedores = [];           // [{id, nombre}]
 let overridesData = { clients:{}, orders:{} }; // overrides conocidos/aplicados: {[id]:{campos,_at}}
 let cmConsolidado = { clients:[], orders:[] }; // datos combinados de todos los vendedores (solo modo casa matriz)
 let cmFiltroVendedor = '';
-let driveAccessToken = null;
-let driveTokenClient = null;
+let fbApp = null, fbAuth = null, fbDb = null, fbSdk = null; // instancia y funciones de Firebase, una vez cargado
 let syncTimer = null;
 let lastSyncAt = null;
 let editandoVendedorId = null;
@@ -843,12 +850,9 @@ async function loadAll(){
   }catch(e){ prospects = []; }
 
   vendorName = localStorage.getItem(STORAGE_PREFIX + 'vendorName') || '';
-  driveFileId = localStorage.getItem(STORAGE_PREFIX + 'driveFileId') || null;
-  overridesFileId = localStorage.getItem(STORAGE_PREFIX + 'overridesFileId') || null;
   casaMatrizUnlocked = localStorage.getItem(STORAGE_PREFIX + 'cmUnlocked') === 'true';
   casaMatrizModo = casaMatrizUnlocked && localStorage.getItem(STORAGE_PREFIX + 'cmModo') === 'true';
   try{ casaMatrizVendedores = JSON.parse(localStorage.getItem(STORAGE_PREFIX + 'cmVendedores') || '[]'); }catch(e){ casaMatrizVendedores = []; }
-  casaMatrizOverridesFileId = localStorage.getItem(STORAGE_PREFIX + 'cmOverridesFileId') || null;
   try{ overridesData = JSON.parse(localStorage.getItem(STORAGE_PREFIX + 'overridesCache') || '{"clients":{},"orders":{}}'); }catch(e){ overridesData = {clients:{},orders:{}}; }
 
   renderAll();
@@ -1348,9 +1352,12 @@ async function guardarOverrideCasaMatriz(tipo, id, campos){
   const idx = arr.findIndex(r=>r.id===id);
   if(idx>-1) arr[idx] = { ...arr[idx], ...campos, _cmOverride:true, _cmAt: Date.now() };
   renderAll();
-  if(driveAccessToken && casaMatrizOverridesFileId){
-    try{ await driveActualizarArchivo(casaMatrizOverridesFileId, { app:'taller3d_overrides', overrides: overridesData }); }
-    catch(e){ console.warn('No se pudo subir el override a Drive todavía, se reintenta en el próximo sync', e); }
+  if(firebaseConfigured()){
+    try{
+      await cargarFirebase();
+      const ref = fbSdk.doc(fbDb, 'overrides', 'casaMatriz');
+      await fbSdk.setDoc(ref, { overrides: overridesData, updatedAt: Date.now() });
+    }catch(e){ console.warn('No se pudo subir el override todavía, se reintenta en el próximo sync', e); }
   }
 }
 
@@ -1425,28 +1432,20 @@ function abrirVendedorForm(id){
   const v = id ? casaMatrizVendedores.find(x=>x.id===id) : null;
   document.getElementById('vendedorSheetTitle').textContent = id ? 'Editar vendedor' : 'Nuevo vendedor';
   document.getElementById('vendedorNombre').value = v?.nombre || '';
-  document.getElementById('vendedorDriveLink').value = v?.driveFileId || '';
   openSheet('sheetVendedor');
-}
-function extraerDriveFileId(input){
-  const s = (input || '').trim();
-  let m = s.match(/\/d\/([a-zA-Z0-9_-]{10,})/);
-  if(m) return m[1];
-  m = s.match(/[?&]id=([a-zA-Z0-9_-]{10,})/);
-  if(m) return m[1];
-  if(/^[a-zA-Z0-9_-]{10,}$/.test(s)) return s;
-  return '';
 }
 async function guardarVendedor(){
   const nombre = document.getElementById('vendedorNombre').value.trim();
-  const fileId = extraerDriveFileId(document.getElementById('vendedorDriveLink').value);
   if(!nombre){ alert('Poné el nombre del vendedor'); return; }
-  if(!fileId){ alert('No pude reconocer el link o ID del archivo de Drive. Pegá el link para compartir completo, o el ID del archivo.'); return; }
+  // El identificador que usa Firebase para guardar/leer los datos de este
+  // vendedor es el nombre "normalizado" (slug): el vendedor tiene que haber
+  // puesto exactamente ese mismo nombre en su propia app (Opciones → Tu
+  // identificación) para que casa matriz lo encuentre.
   if(editandoVendedorId){
     const idx = casaMatrizVendedores.findIndex(v=>v.id===editandoVendedorId);
-    casaMatrizVendedores[idx] = { ...casaMatrizVendedores[idx], nombre, driveFileId: fileId };
+    casaMatrizVendedores[idx] = { ...casaMatrizVendedores[idx], nombre };
   }else{
-    casaMatrizVendedores.push({ id: uid(), nombre, driveFileId: fileId });
+    casaMatrizVendedores.push({ id: uid(), nombre });
   }
   localStorage.setItem(STORAGE_PREFIX + 'cmVendedores', JSON.stringify(casaMatrizVendedores));
   closeSheet('sheetVendedor');
@@ -1454,7 +1453,7 @@ async function guardarVendedor(){
   sincronizarCasaMatriz();
 }
 async function eliminarVendedor(id){
-  if(!confirm('¿Quitar este vendedor de la vista de casa matriz? No se borra nada de su Drive.')) return;
+  if(!confirm('¿Quitar este vendedor de la vista de casa matriz? No se borra nada de sus datos en la nube.')) return;
   casaMatrizVendedores = casaMatrizVendedores.filter(v=>v.id!==id);
   localStorage.setItem(STORAGE_PREFIX + 'cmVendedores', JSON.stringify(casaMatrizVendedores));
   renderVendedoresList();
@@ -1507,22 +1506,12 @@ function actualizarUIModo(){
   const fab = document.getElementById('fabBtn');
   if(fab) fab.style.display = casaMatrizModo ? 'none' : '';
 
-  actualizarUIDrive(!!driveAccessToken);
   actualizarUISync();
 
-  if(!driveConfigured()){
+  if(!firebaseConfigured()){
     const warn = document.getElementById('driveConfigWarning');
     if(warn) warn.style.display = '';
   }
-}
-function actualizarUIDrive(conectado){
-  const dot = document.getElementById('driveStatusDot');
-  const label = document.getElementById('driveStatusLabel');
-  const btnConectar = document.getElementById('driveConnectBtn');
-  if(!dot) return;
-  dot.className = 'dot ' + (conectado ? 'dot-on' : 'dot-off');
-  label.textContent = conectado ? 'Conectado' : 'Desconectado';
-  if(btnConectar) btnConectar.textContent = conectado ? 'Reconectar' : 'Conectar Google Drive';
 }
 function actualizarUISync(){
   const el = document.getElementById('lastSyncLabel');
@@ -1543,94 +1532,37 @@ async function sincronizarAhora(){
 }
 
 /* =========================================================
-   GOOGLE DRIVE — carga de scripts, auth, lectura/escritura
+   FIREBASE — carga del SDK, autenticación anónima, Firestore
+   ---------------------------------------------------------
+   Cada vendedor guarda sus datos en un documento propio, en la
+   colección "vendedores", con ID = slug(nombre del vendedor).
+   Casa matriz guarda sus overrides en un único documento fijo
+   ("overrides/casaMatriz") y arma la vista consolidada leyendo
+   el documento de cada vendedor que dio de alta.
+   No hace falta compartir links ni IDs de archivo: alcanza con
+   que el vendedor use, en Opciones, el mismo nombre que casa
+   matriz cargó en "Gestionar vendedores".
    ========================================================= */
-function cargarScriptsGoogle(){
-  return new Promise((resolve, reject)=>{
-    if(window.gapi && window.google?.accounts?.oauth2){ resolve(); return; }
-    let pending = 2;
-    const done = ()=>{ if(--pending===0) resolve(); };
-    const s1 = document.createElement('script');
-    s1.src = 'https://apis.google.com/js/api.js';
-    s1.onload = ()=> gapi.load('client', done);
-    s1.onerror = reject;
-    document.head.appendChild(s1);
-    const s2 = document.createElement('script');
-    s2.src = 'https://accounts.google.com/gsi/client';
-    s2.onload = done;
-    s2.onerror = reject;
-    document.head.appendChild(s2);
-  });
-}
-async function initDrive(){
-  if(!driveConfigured()){
-    alert('Falta configurar Google Drive en el código de la app (buscá DRIVE_CONFIG al principio del script, tiene las instrucciones).');
-    return false;
-  }
-  await cargarScriptsGoogle();
-  await gapi.client.init({ apiKey: DRIVE_CONFIG.API_KEY, discoveryDocs:['https://www.googleapis.com/discovery/v1/apis/drive/v3/rest'] });
-  if(!driveTokenClient){
-    driveTokenClient = google.accounts.oauth2.initTokenClient({
-      client_id: DRIVE_CONFIG.CLIENT_ID,
-      scope: DRIVE_CONFIG.SCOPES,
-      callback: ()=>{}
-    });
-  }
-  return true;
-}
-function conectarDrive(interactive){
-  return initDrive().then(ok=>{
-    if(!ok) return false;
-    return new Promise(resolve=>{
-      driveTokenClient.callback = (resp)=>{
-        if(resp.error){ console.warn('Drive auth', resp); actualizarUIDrive(false); resolve(false); return; }
-        driveAccessToken = resp.access_token;
-        gapi.client.setToken({ access_token: driveAccessToken });
-        localStorage.setItem(STORAGE_PREFIX + 'driveGranted', 'true');
-        actualizarUIDrive(true);
-        resolve(true);
-      };
-      driveTokenClient.requestAccessToken({ prompt: interactive ? 'consent' : '' });
-    });
-  });
-}
-function desconectarDrive(){
-  if(driveAccessToken && window.google?.accounts?.oauth2){
-    google.accounts.oauth2.revoke(driveAccessToken, ()=>{});
-  }
-  driveAccessToken = null;
-  localStorage.removeItem(STORAGE_PREFIX + 'driveGranted');
-  actualizarUIDrive(false);
-}
-async function driveBuscarArchivo(nombre){
-  const res = await gapi.client.drive.files.list({ q:`name='${nombre}' and trashed=false`, fields:'files(id,name)', spaces:'drive' });
-  return res.result.files?.[0] || null;
-}
-async function driveCrearArchivo(nombre, contenidoObj){
-  const boundary = 'taller3dboundary';
-  const metadata = { name: nombre, mimeType:'application/json' };
-  const body =
-    `--${boundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n${JSON.stringify(metadata)}\r\n` +
-    `--${boundary}\r\nContent-Type: application/json\r\n\r\n${JSON.stringify(contenidoObj)}\r\n--${boundary}--`;
-  const res = await gapi.client.request({
-    path:'/upload/drive/v3/files', method:'POST', params:{ uploadType:'multipart' },
-    headers:{ 'Content-Type': `multipart/related; boundary=${boundary}` }, body
-  });
-  return res.result.id;
-}
-async function driveActualizarArchivo(fileId, contenidoObj){
-  await gapi.client.request({
-    path:`/upload/drive/v3/files/${fileId}`, method:'PATCH', params:{ uploadType:'media' },
-    body: JSON.stringify(contenidoObj)
-  });
-}
-async function driveLeerArchivo(fileId){
-  const res = await gapi.client.drive.files.get({ fileId, alt:'media' });
-  if(res.result && typeof res.result === 'object') return res.result;
-  return JSON.parse(res.body);
-}
-async function driveCompartirLectorPublico(fileId){
-  await gapi.client.drive.permissions.create({ fileId, resource:{ role:'reader', type:'anyone' } });
+let fbCargaEnCurso = null;
+function cargarFirebase(){
+  if(fbDb) return Promise.resolve();
+  if(fbCargaEnCurso) return fbCargaEnCurso;
+  fbCargaEnCurso = (async ()=>{
+    if(!firebaseConfigured()){
+      throw new Error('Falta configurar Firebase en el código de la app (buscá FIREBASE_CONFIG al principio del script, tiene las instrucciones).');
+    }
+    const [{ initializeApp }, authMod, fsMod] = await Promise.all([
+      import('https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js'),
+      import('https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js'),
+      import('https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js'),
+    ]);
+    fbSdk = { ...authMod, ...fsMod };
+    fbApp = initializeApp(FIREBASE_CONFIG);
+    fbAuth = fbSdk.getAuth(fbApp);
+    fbDb = fbSdk.getFirestore(fbApp);
+    await fbSdk.signInAnonymously(fbAuth);
+  })();
+  return fbCargaEnCurso;
 }
 function slug(s){
   return (s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,'') || 'x';
@@ -1638,35 +1570,25 @@ function slug(s){
 
 /* ---------- Sincronización: modo vendedor ---------- */
 async function subirDatosPropios(){
-  const payload = {
-    app: 'taller3d', version: 1, vendedor: vendorName,
-    exportedAt: new Date().toISOString(),
+  const ref = fbSdk.doc(fbDb, 'vendedores', slug(vendorName || 'vendedor'));
+  await fbSdk.setDoc(ref, {
+    nombre: vendorName || 'vendedor',
     clients, orders, prospects,
-    overridesFileId: overridesFileId || undefined
-  };
-  const nombreArchivo = `ludiverso3d_${slug(vendorName || 'vendedor')}.json`;
-  if(!driveFileId){
-    const existente = await driveBuscarArchivo(nombreArchivo);
-    driveFileId = existente ? existente.id : await driveCrearArchivo(nombreArchivo, payload);
-    localStorage.setItem(STORAGE_PREFIX + 'driveFileId', driveFileId);
-  }
-  await driveActualizarArchivo(driveFileId, payload);
+    updatedAt: Date.now()
+  });
 }
 async function leerOverridesPropios(){
-  if(!overridesFileId) return;
-  try{
-    const data = await driveLeerArchivo(overridesFileId);
-    overridesData = (data && data.overrides) ? data.overrides : { clients:{}, orders:{} };
-    localStorage.setItem(STORAGE_PREFIX + 'overridesCache', JSON.stringify(overridesData));
-  }catch(e){ console.warn('No se pudieron leer los overrides de casa matriz', e); }
+  const ref = fbSdk.doc(fbDb, 'overrides', 'casaMatriz');
+  const snap = await fbSdk.getDoc(ref);
+  overridesData = (snap.exists() && snap.data().overrides) ? snap.data().overrides : { clients:{}, orders:{} };
+  localStorage.setItem(STORAGE_PREFIX + 'overridesCache', JSON.stringify(overridesData));
 }
 async function sincronizarVendedor(){
-  if(!driveConfigured()) return;
-  if(!driveAccessToken){ const ok = await conectarDrive(false); if(!ok) return; }
+  if(!firebaseConfigured()) return;
   try{
+    await cargarFirebase();
     await subirDatosPropios();
     await leerOverridesPropios();
-    // si casa matriz le avisó dónde está el archivo propio, recién ahora lo tenemos en `driveFileId`'s payload leído de vuelta
     lastSyncAt = Date.now();
   }catch(e){ console.warn('Error sincronizando', e); }
   renderAll();
@@ -1675,30 +1597,21 @@ async function sincronizarVendedor(){
 
 /* ---------- Sincronización: modo casa matriz ---------- */
 async function sincronizarCasaMatriz(){
-  if(!driveConfigured()) return;
-  if(!driveAccessToken){ const ok = await conectarDrive(false); if(!ok) return; }
+  if(!firebaseConfigured()) return;
   try{
-    const nombreOverrides = 'ludiverso3d_casamatriz_overrides.json';
-    if(!casaMatrizOverridesFileId){
-      const existente = await driveBuscarArchivo(nombreOverrides);
-      casaMatrizOverridesFileId = existente ? existente.id : await driveCrearArchivo(nombreOverrides, { app:'taller3d_overrides', overrides: overridesData });
-      await driveCompartirLectorPublico(casaMatrizOverridesFileId);
-      localStorage.setItem(STORAGE_PREFIX + 'cmOverridesFileId', casaMatrizOverridesFileId);
-    }else{
-      await driveActualizarArchivo(casaMatrizOverridesFileId, { app:'taller3d_overrides', overrides: overridesData });
-    }
+    await cargarFirebase();
+    const refOverrides = fbSdk.doc(fbDb, 'overrides', 'casaMatriz');
+    await fbSdk.setDoc(refOverrides, { overrides: overridesData, updatedAt: Date.now() });
 
     const clientesAll = [], ordersAll = [];
     for(const v of casaMatrizVendedores){
-      if(!v.driveFileId) continue;
       try{
-        const data = await driveLeerArchivo(v.driveFileId);
+        const ref = fbSdk.doc(fbDb, 'vendedores', slug(v.nombre));
+        const snap = await fbSdk.getDoc(ref);
+        if(!snap.exists()) continue;
+        const data = snap.data();
         (data.clients||[]).forEach(c => clientesAll.push({ ...aplicarOverride(c,'clients'), vendedor: v.nombre }));
         (data.orders||[]).forEach(o => ordersAll.push({ ...aplicarOverride(o,'orders'), vendedor: v.nombre }));
-        if(data.overridesFileId !== casaMatrizOverridesFileId){
-          data.overridesFileId = casaMatrizOverridesFileId;
-          await driveActualizarArchivo(v.driveFileId, data);
-        }
       }catch(e){ console.warn('No se pudo leer al vendedor', v.nombre, e); }
     }
     cmConsolidado = { clients: clientesAll, orders: ordersAll };
@@ -1710,11 +1623,10 @@ async function sincronizarCasaMatriz(){
 
 function iniciarSincronizacionAutomatica(){
   if(syncTimer) clearInterval(syncTimer);
-  if(!driveConfigured()) return;
+  if(!firebaseConfigured()) return;
   syncTimer = setInterval(()=> casaMatrizModo ? sincronizarCasaMatriz() : sincronizarVendedor(), 5*60*1000);
-  if(localStorage.getItem(STORAGE_PREFIX + 'driveGranted') === 'true'){
-    conectarDrive(false).then(ok=>{ if(ok) (casaMatrizModo ? sincronizarCasaMatriz() : sincronizarVendedor()); });
-  }
+  // Primera sincronización al abrir, sin esperar el intervalo.
+  (casaMatrizModo ? sincronizarCasaMatriz() : sincronizarVendedor());
 }
 
 loadAll();
@@ -1729,7 +1641,7 @@ loadAll();
     </p>
 
     <p id="driveConfigWarning" style="display:none;font-size:12px;color:var(--danger);background:rgba(242,97,97,.1);border:1px solid var(--danger);border-radius:10px;padding:10px 12px;margin:0 0 14px;">
-      ⚠️ Falta configurar Google Drive en el código de la app (DRIVE_CONFIG, al principio del script) para poder sincronizar entre vendedores y casa matriz.
+      ⚠️ Falta configurar Firebase en el código de la app (FIREBASE_CONFIG, al principio del script) para poder sincronizar entre vendedores y casa matriz.
     </p>
 
     <div class="opt-section">
@@ -1741,11 +1653,7 @@ loadAll();
     </div>
 
     <div class="opt-section">
-      <h4>Google Drive</h4>
-      <div class="opt-row">
-        <span><span class="dot dot-off" id="driveStatusDot"></span><span id="driveStatusLabel">Desconectado</span></span>
-        <button class="link-btn" id="driveConnectBtn" onclick="conectarDrive(true)">Conectar Google Drive</button>
-      </div>
+      <h4>Sincronización en la nube</h4>
       <div class="opt-row">
         <span id="lastSyncLabel" style="color:var(--ink-dim);font-size:12px;">Todavía no sincronizó</span>
         <button class="link-btn" id="syncNowBtn" onclick="sincronizarAhora()">Sincronizar ahora</button>
@@ -1753,10 +1661,6 @@ loadAll();
       <div class="opt-row" style="margin-top:2px;">
         <span></span>
         <button class="link-btn" onclick="closeSheet('sheetBackup'); openSheet('sheetInstrucciones');">¿Cómo sincronizo?</button>
-      </div>
-      <div class="opt-row" style="margin-top:2px;">
-        <span></span>
-        <button class="link-btn" style="color:var(--danger);" onclick="desconectarDrive()">Desconectar</button>
       </div>
     </div>
 
