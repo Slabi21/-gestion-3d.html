@@ -13,8 +13,8 @@
    Si no lo cambiás, los celulares que ya tenían la app guardada
    van a seguir viendo la versión vieja aunque subas la nueva.
    ========================================================= */
-const CACHE_NAME = 'taller3d-shell-v1';
-const APP_SHELL = ['./', './gestion-3d.html'];
+const CACHE_NAME = 'taller3d-shell-v2';
+const APP_SHELL = ['./gestion-3d.html'];
 
 self.addEventListener('install', (event) => {
   self.skipWaiting();
