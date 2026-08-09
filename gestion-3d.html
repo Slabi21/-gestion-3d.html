@@ -535,6 +535,7 @@
       <span class="field-hint">Este cambio se guarda como ajuste de casa matriz, sin pisar los datos del vendedor.</span>
     </div>
     <div class="sheet-actions">
+      <button class="btn btn-danger" id="btnEliminarClienteForm" style="display:none;" onclick="deleteCliente()">Eliminar</button>
       <button class="btn btn-secondary" onclick="closeSheet('sheetCliente')">Cancelar</button>
       <button class="btn btn-primary" onclick="saveCliente()">Guardar</button>
     </div>
@@ -550,7 +551,6 @@
     <p style="font-size:12px;color:var(--ink-dim);text-transform:uppercase;letter-spacing:.06em;margin:16px 0 8px;">Pedidos de este cliente</p>
     <div id="detalleClientePedidos"></div>
     <div class="sheet-actions">
-      <button class="btn btn-danger" id="btnEliminarCliente" onclick="deleteCliente()">Eliminar</button>
       <button class="btn btn-secondary" onclick="editCliente()">Editar</button>
       <button class="btn btn-primary" onclick="closeSheet('sheetClienteDetalle')">Cerrar</button>
     </div>
@@ -591,6 +591,7 @@
       </div>
     </div>
     <div class="sheet-actions">
+      <button class="btn btn-danger" id="btnEliminarPedidoForm" style="display:none;" onclick="deletePedido()">Eliminar</button>
       <button class="btn btn-secondary" onclick="closeSheet('sheetPedido')">Cancelar</button>
       <button class="btn btn-primary" onclick="savePedido()">Guardar</button>
     </div>
@@ -955,6 +956,8 @@ function openClienteForm(id){
   }else{
     vField.style.display = 'none';
   }
+  const btnEliminar = document.getElementById('btnEliminarClienteForm');
+  if(btnEliminar) btnEliminar.style.display = (id && !casaMatrizModo) ? '' : 'none';
   openSheet('sheetCliente');
 }
 
@@ -1024,9 +1027,6 @@ function openClienteDetalle(id){
     ? cOrders.map(o=>`<div class="detail-row"><span class="detail-label">${escapeHtml(ordResumen(o))}</span><span class="detail-value">${STATUS_LABEL[o.estado]}</span></div>`).join('')
     : '<p style="color:var(--ink-dim);font-size:13px;">Sin pedidos todavía</p>';
 
-  const btnEliminar = document.getElementById('btnEliminarCliente');
-  if(btnEliminar) btnEliminar.style.display = casaMatrizModo ? 'none' : '';
-
   openSheet('sheetClienteDetalle');
 }
 
@@ -1036,11 +1036,13 @@ function editCliente(){
 }
 
 async function deleteCliente(){
+  const id = document.getElementById('clienteId').value || currentDetalleId;
   if(casaMatrizModo){ alert('Casa matriz no elimina clientes, solo edita y reasigna. La baja la hace el vendedor desde su propia app.'); return; }
   if(!confirm('¿Eliminar este cliente? Sus pedidos quedarán sin cliente asignado.')) return;
-  clients = clients.filter(c=>c.id!==currentDetalleId);
+  clients = clients.filter(c=>c.id!==id);
   await persist('clients', clients);
   renderClients();
+  closeSheet('sheetCliente');
   closeSheet('sheetClienteDetalle');
 }
 
@@ -1171,6 +1173,8 @@ function openPedidoForm(id){
     addProductRow(); // arranca con una fila vacía lista para cargar
   }
   recalcTotal();
+  const btnEliminar = document.getElementById('btnEliminarPedidoForm');
+  if(btnEliminar) btnEliminar.style.display = (id && !casaMatrizModo) ? '' : 'none';
   openSheet('sheetPedido');
 }
 
@@ -1200,6 +1204,18 @@ async function savePedido(){
   }else{
     orders.push({ id: uid(), createdAt: Date.now(), vendedor: vendorName || null, ...data });
   }
+  await persist('orders', orders);
+  renderOrders();
+  renderClients();
+  closeSheet('sheetPedido');
+}
+
+async function deletePedido(){
+  const id = document.getElementById('pedidoId').value;
+  if(!id) return;
+  if(casaMatrizModo){ alert('Casa matriz no elimina pedidos, solo edita. La baja la hace el vendedor desde su propia app.'); return; }
+  if(!confirm('¿Eliminar este pedido? No se puede deshacer.')) return;
+  orders = orders.filter(o=>o.id!==id);
   await persist('orders', orders);
   renderOrders();
   renderClients();
