@@ -275,6 +275,17 @@ function escapeAttr(str){ return (str||'').replace(/"/g,'&quot;'); }
 window.openSheet = id => document.getElementById(id).classList.add('active');
 window.closeSheet = id => document.getElementById(id).classList.remove('active');
 
+// Imagen predefinida para productos sin foto cargada (SVG propio, mismo
+// estilo del ícono de la app — capas de impresión 3D en naranja "filamento").
+const DEFAULT_PHOTO = 'data:image/svg+xml;base64,' + btoa(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200">
+<rect width="200" height="200" fill="#2c3037"/>
+<g stroke="#ff7a29" stroke-width="6" fill="none" opacity="0.85">
+<ellipse cx="100" cy="76" rx="46" ry="16"/>
+<ellipse cx="100" cy="100" rx="46" ry="16"/>
+<ellipse cx="100" cy="124" rx="46" ry="16"/>
+</g>
+</svg>`);
+
 /* ---------- Firebase ---------- */
 async function cargarFirebase(){
   if(fbDb) return;
@@ -310,6 +321,7 @@ function actualizarDatalistCategorias(){
   document.getElementById('categoriasList').innerHTML = cats.map(c => `<option value="${escapeAttr(c)}">`).join('');
 }
 
+window.renderCatalogo = renderCatalogo;
 function renderCatalogo(){
   const cont = document.getElementById('contenido');
   const q = (document.getElementById('buscador').value || '').toLowerCase().trim();
@@ -364,9 +376,8 @@ function renderCatalogo(){
 function productoCardHtml(p){
   const precio = Number(p.precio) || 0;
   const dias = Number(p.diasImpresion) || 0;
-  const foto = p.fotoUrl
-    ? `<img src="${escapeAttr(p.fotoUrl)}" alt="${escapeAttr(p.nombre)}" onerror="this.parentElement.innerHTML='<span class=&quot;placeholder&quot;>Sin foto</span>'">`
-    : `<span class="placeholder">Sin foto</span>`;
+  const fotoSrc = p.fotoUrl || DEFAULT_PHOTO;
+  const foto = `<img src="${escapeAttr(fotoSrc)}" alt="${escapeAttr(p.nombre)}" onerror="this.onerror=null;this.src='${DEFAULT_PHOTO}';">`;
   return `
     <div class="product-card">
       ${editorUnlocked ? `
@@ -426,8 +437,8 @@ function actualizarUIModo(){
 window.actualizarPreviewFoto = function(){
   const url = document.getElementById('pFoto').value.trim();
   const prev = document.getElementById('fotoPreview');
-  if(!url){ prev.innerHTML = '<span class="ph">Sin foto</span>'; return; }
-  prev.innerHTML = `<img src="${escapeAttr(url)}" onerror="this.parentElement.innerHTML='<span class=&quot;ph&quot;>No carga</span>'">`;
+  const src = url || DEFAULT_PHOTO;
+  prev.innerHTML = `<img src="${escapeAttr(src)}" onerror="this.onerror=null;this.src='${DEFAULT_PHOTO}';">`;
 };
 
 window.abrirProductoForm = function(id){
