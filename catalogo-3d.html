@@ -6,6 +6,16 @@
 <title>Catálogo — Taller 3D</title>
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxOTIgMTkyIj4KPHJlY3Qgd2lkdGg9IjE5MiIgaGVpZ2h0PSIxOTIiIHJ4PSI0MCIgZmlsbD0iIzFiMWQyMSIvPgo8ZyBzdHJva2U9IiNmZjdhMjkiIHN0cm9rZS13aWR0aD0iNyIgZmlsbD0ibm9uZSI+CjxlbGxpcHNlIGN4PSI5NiIgY3k9IjY0IiByeD0iNDgiIHJ5PSIxNyIvPgo8ZWxsaXBzZSBjeD0iOTYiIGN5PSI4OCIgcng9IjQ4IiByeT0iMTciLz4KPGVsbGlwc2UgY3g9Ijk2IiBjeT0iMTEyIiByeD0iNDgiIHJ5PSIxNyIvPgo8L2c+Cjx0ZXh0IHg9Ijk2IiB5PSIxNjAiIGZvbnQtZmFtaWx5PSJtb25vc3BhY2Usc2Fucy1zZXJpZiIgZm9udC1zaXplPSIzNiIgZm9udC13ZWlnaHQ9IjcwMCIgZmlsbD0iI2VlZjBmMiIgdGV4dC1hbmNob3I9Im1pZGRsZSI+M0Q8L3RleHQ+Cjwvc3ZnPg==">
 <meta name="theme-color" content="#1b1d21">
+<script>
+  // Guarda una copia local del catálogo para que abra rápido y no se
+  // quede en blanco con mala señal. Requiere que sw-catalogo.js esté
+  // subido en la misma carpeta que este HTML.
+  if('serviceWorker' in navigator){
+    window.addEventListener('load', ()=>{
+      navigator.serviceWorker.register('./sw-catalogo.js').catch(e=>console.warn('No se pudo registrar el modo offline del catálogo (sw-catalogo.js)', e));
+    });
+  }
+</script>
 <style>
   :root{
     --bg: #1b1d21;
@@ -91,6 +101,12 @@
   .product-name{ font-size:13.5px; font-weight:600; line-height:1.25; }
   .product-price{ font-family:'JetBrains Mono',monospace; font-weight:700; color: var(--accent); font-size:14px; }
   .product-days{ font-size:11px; color: var(--ink-dim); font-family:'JetBrains Mono',monospace; }
+  .disp-chip{
+    display:inline-flex; align-items:center; gap:4px; font-size:10px; font-weight:700;
+    padding:2px 7px; border-radius:20px; margin-top:2px; width:fit-content;
+  }
+  .disp-inmediato{ background: rgba(52,211,153,.14); color:#34d399; }
+  .disp-pedido{ background: rgba(251,191,36,.14); color:#fbbf24; }
 
   .product-edit-actions{
     position:absolute; top:8px; right:8px; display:flex; gap:6px;
@@ -100,6 +116,7 @@
     background: rgba(27,29,33,.78); backdrop-filter: blur(2px);
     color: var(--ink); display:flex; align-items:center; justify-content:center; font-size:13px; cursor:pointer;
   }
+  .mini-btn-sm{ width:22px; height:22px; font-size:10px; border-radius:7px; }
 
   .empty-state{
     text-align:center; color: var(--ink-dim); padding: 60px 20px 30px; font-size:14px; line-height:1.6;
@@ -282,6 +299,13 @@
       </div>
     </div>
     <div class="field">
+      <label>Disponibilidad</label>
+      <select id="pDisponibilidad">
+        <option value="inmediato">Hecho al momento (hay stock)</option>
+        <option value="pedido">Bajo pedido</option>
+      </select>
+    </div>
+    <div class="field">
       <label>Fotos</label>
       <label class="btn btn-secondary" id="btnSubirFotoLabel" style="display:flex;align-items:center;justify-content:center;gap:6px;cursor:pointer;margin-bottom:8px;">
         📤 Subir foto desde el dispositivo
@@ -347,6 +371,7 @@
       <h3 class="detalle-nombre" id="detalleNombre"></h3>
       <div class="detalle-precio mono" id="detallePrecio"></div>
       <div class="detalle-dias" id="detalleDias"></div>
+      <div id="detalleDisp" style="margin-top:6px;"></div>
       <p class="detalle-desc" id="detalleDesc"></p>
       <div class="btn-row" style="margin-top:16px;">
         <button class="btn btn-primary" onclick="consultarPorWhatsapp()">💬 Consultar por WhatsApp</button>
@@ -384,7 +409,7 @@ const STORAGE_PREFIX = 'catalogo3d_';
 // Número de WhatsApp del negocio para el botón "Consultar" del detalle de
 // producto, en formato internacional sin signos ni espacios (ej: 5491155555555).
 // Mientras esté vacío, el botón avisa que falta configurarlo.
-const WHATSAPP_NUMERO = '5491169837322';
+const WHATSAPP_NUMERO = '';
 
 /* ---------- Subida de fotos a GitHub ---------- */
 const GH_REPO = 'Slabi21/-gestion-3d.html';
@@ -601,6 +626,18 @@ async function cargarFirebase(){
   fbApp = initializeApp(FIREBASE_CONFIG);
   fbAuth = fbSdk.getAuth(fbApp);
   fbDb = fbSdk.getFirestore(fbApp);
+  try{
+    // Guarda los productos en el propio celular (IndexedDB) para que el
+    // catálogo no se quede en blanco con mala señal: la primera vez que
+    // hay internet se descarga todo, y después Firestore sirve la última
+    // copia guardada mientras no haya conexión.
+    await fbSdk.enableIndexedDbPersistence(fbDb);
+  }catch(e){
+    // Falla si hay otra pestaña del catálogo abierta a la vez, o si el
+    // navegador no soporta IndexedDB. No es grave: el catálogo sigue
+    // funcionando, solo que sin caché offline de los datos.
+    console.warn('No se pudo activar la caché offline de Firestore', e);
+  }
   await fbSdk.signInAnonymously(fbAuth);
   escucharProductos();
 }
@@ -689,7 +726,11 @@ function renderCatalogo(){
   });
 
   cont.innerHTML = nombresCats.map(cat => {
-    const items = grupos[cat].sort((a,b)=> (a.nombre||'').localeCompare(b.nombre||'', 'es'));
+    const items = grupos[cat].sort((a,b)=>{
+      const oa = a.orden ?? Infinity, ob = b.orden ?? Infinity;
+      if(oa !== ob) return oa - ob;
+      return (a.nombre||'').localeCompare(b.nombre||'', 'es');
+    });
     return `
       <div class="cat-section">
         <div class="cat-title">${escapeHtml(cat)} <span class="count">${items.length}</span></div>
@@ -704,6 +745,13 @@ function primeraFoto(p){
   return (p.fotos && p.fotos.length) ? p.fotos[0] : (p.fotoUrl || '');
 }
 
+function dispChipHtml(p){
+  const disp = p.disponibilidad || 'inmediato';
+  return disp === 'pedido'
+    ? `<span class="disp-chip disp-pedido">⏳ Bajo pedido</span>`
+    : `<span class="disp-chip disp-inmediato">✅ Hecho al momento</span>`;
+}
+
 function productoCardHtml(p){
   const precio = Number(p.precio) || 0;
   const dias = Number(p.diasImpresion) || 0;
@@ -713,6 +761,8 @@ function productoCardHtml(p){
     <div class="product-card" onclick="abrirDetalleProducto('${p.id}')">
       ${editorUnlocked ? `
         <div class="product-edit-actions">
+          <button class="mini-btn mini-btn-sm" onclick="event.stopPropagation(); moverProductoOrden('${p.id}', -1)" title="Mover antes">↑</button>
+          <button class="mini-btn mini-btn-sm" onclick="event.stopPropagation(); moverProductoOrden('${p.id}', 1)" title="Mover después">↓</button>
           <button class="mini-btn" onclick="event.stopPropagation(); abrirProductoForm('${p.id}')" title="Editar">✎</button>
         </div>` : ''}
       <div class="product-photo">${foto}</div>
@@ -720,9 +770,39 @@ function productoCardHtml(p){
         <div class="product-name">${escapeHtml(p.nombre)}</div>
         <div class="product-price mono">$${precio.toLocaleString('es-AR')}</div>
         ${dias > 0 ? `<div class="product-days">≈ ${dias} día${dias===1?'':'s'} de impresión</div>` : ''}
+        ${dispChipHtml(p)}
       </div>
     </div>`;
 }
+
+window.moverProductoOrden = async function(id, delta){
+  const p = productos.find(x=>x.id===id);
+  if(!p) return;
+  const cat = (p.categoria||'').trim() || 'Sin categoría';
+  const mismos = productos.filter(x => ((x.categoria||'').trim() || 'Sin categoría') === cat)
+    .sort((a,b)=>{
+      const oa = a.orden ?? Infinity, ob = b.orden ?? Infinity;
+      if(oa !== ob) return oa - ob;
+      return (a.nombre||'').localeCompare(b.nombre||'', 'es');
+    });
+  const idx = mismos.findIndex(x=>x.id===id);
+  const j = idx + delta;
+  if(j < 0 || j >= mismos.length) return;
+
+  // Asigna orden secuencial (0,1,2...) a toda la categoría y después
+  // intercambia las dos posiciones tocadas, para dejar un orden bien
+  // definido de ahí en más (antes de esto, "orden" podía no existir).
+  const nuevos = mismos.map((x,i)=>({ id: x.id, orden: i }));
+  [nuevos[idx].orden, nuevos[j].orden] = [nuevos[j].orden, nuevos[idx].orden];
+
+  try{
+    await cargarFirebase();
+    await Promise.all(nuevos.map(u => fbSdk.setDoc(fbSdk.doc(fbDb, 'productos', u.id), { orden: u.orden }, { merge: true })));
+  }catch(e){
+    console.warn(e);
+    alert('No se pudo reordenar. Revisá tu conexión e intentá de nuevo.');
+  }
+};
 
 /* ---------- Detalle ampliado del producto ---------- */
 let detalleFotosCount = 0;
@@ -775,6 +855,7 @@ window.abrirDetalleProducto = function(id){
   document.getElementById('detallePrecio').textContent = '$' + precio.toLocaleString('es-AR');
   const dias = Number(p.diasImpresion) || 0;
   document.getElementById('detalleDias').textContent = dias > 0 ? `≈ ${dias} día${dias===1?'':'s'} de impresión` : '';
+  document.getElementById('detalleDisp').innerHTML = dispChipHtml(p);
   const descEl = document.getElementById('detalleDesc');
   descEl.textContent = p.descripcion || '';
   descEl.style.display = p.descripcion ? '' : 'none';
@@ -899,6 +980,7 @@ window.abrirProductoForm = function(id){
   document.getElementById('pCategoria').value = p?.categoria || '';
   document.getElementById('pPrecio').value = p?.precio ?? '';
   document.getElementById('pDias').value = p?.diasImpresion ?? '';
+  document.getElementById('pDisponibilidad').value = p?.disponibilidad || 'inmediato';
   document.getElementById('pDescripcion').value = p?.descripcion || '';
   document.getElementById('pFotoUrlManual').value = '';
   fotosEdit = (p?.fotos && p.fotos.length) ? [...p.fotos] : (p?.fotoUrl ? [p.fotoUrl] : []);
@@ -916,6 +998,7 @@ window.guardarProducto = async function(){
     categoria: document.getElementById('pCategoria').value.trim(),
     precio: Number(document.getElementById('pPrecio').value) || 0,
     diasImpresion: Number(document.getElementById('pDias').value) || 0,
+    disponibilidad: document.getElementById('pDisponibilidad').value,
     descripcion: document.getElementById('pDescripcion').value.trim(),
     fotos: fotosEdit.slice(),
     fotoUrl: fotosEdit[0] || '',

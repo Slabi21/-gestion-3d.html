@@ -198,6 +198,9 @@
   .order-main{ min-width:0; flex:1; }
   .order-item{ font-weight:600; font-size:14.5px; margin-bottom:3px; }
   .order-client{ font-size:12.5px; color:var(--ink-dim); }
+  .due-badge{ font-weight:700; }
+  .due-vencido{ color: var(--danger); }
+  .due-hoy{ color: var(--ready); }
   .order-side{ text-align:right; flex-shrink:0; }
   .order-price{ font-family:'JetBrains Mono', monospace; font-weight:700; font-size:14px; }
   .status-chip{
@@ -413,10 +416,14 @@
     display:inline-block; font-size:11px; margin-left:4px; cursor:help;
   }
   .cm-banner{
-    display:flex; align-items:center; gap:8px;
+    display:flex; align-items:center; justify-content:space-between; gap:8px;
     background: rgba(255,122,41,.1); border:1px solid var(--accent);
     color: var(--accent); border-radius:10px; padding:8px 12px;
     font-size:12.5px; font-weight:600; margin-bottom:12px;
+  }
+  .cm-banner-btn{
+    flex-shrink:0; border:1px solid var(--accent); background: var(--accent); color: var(--accent-ink);
+    border-radius:8px; padding:6px 10px; font-size:11.5px; font-weight:700; cursor:pointer;
   }
   .cm-filter-wrap{ display:flex; gap:6px; overflow-x:auto; margin-bottom:10px; padding-bottom:2px; }
   .cm-filter-chip{
@@ -429,6 +436,22 @@
     background: var(--surface-2); border:1px solid var(--line); border-radius:12px;
     padding: 14px; margin-bottom: 14px;
   }
+  .dash-mes-label{ font-size:12px; color:var(--ink-dim); text-transform:uppercase; letter-spacing:.06em; margin-bottom:10px; }
+  .dash-totales{ display:flex; gap:10px; margin-bottom:16px; }
+  .dash-stat{
+    flex:1; background: var(--surface-2); border:1px solid var(--line); border-radius:12px;
+    padding:12px; text-align:center;
+  }
+  .dash-stat-value{ font-family:'JetBrains Mono', monospace; font-size:19px; font-weight:700; color:var(--accent); }
+  .dash-stat-label{ font-size:11px; color:var(--ink-dim); margin-top:2px; }
+  .dash-block{ margin-bottom:18px; }
+  .dash-block h4{ margin:0 0 8px; font-size:13px; text-transform:uppercase; letter-spacing:.05em; color:var(--ink-dim); }
+  .dash-row{
+    display:flex; justify-content:space-between; align-items:center; padding:8px 0;
+    border-bottom:1px solid var(--line); font-size:13px;
+  }
+  .dash-row:last-child{ border-bottom:none; }
+  .dash-row-value{ font-family:'JetBrains Mono', monospace; font-weight:700; }
   .opt-section h4{ margin:0 0 10px; font-size:13px; text-transform:uppercase; letter-spacing:.05em; color:var(--ink-dim); }
   .opt-row{ display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:8px; font-size:13.5px; }
   .opt-row:last-child{ margin-bottom:0; }
@@ -490,7 +513,8 @@
 
 <main>
   <div class="cm-banner" id="cmBanner" style="display:none;">
-    🏢 Estás viendo el modo Casa Matriz (datos de todos los vendedores)
+    <span>🏢 Estás viendo el modo Casa Matriz (datos de todos los vendedores)</span>
+    <button type="button" class="cm-banner-btn" onclick="abrirDashboard()">📊 Dashboard</button>
   </div>
   <!-- CLIENTES -->
   <section class="view active" id="view-clientes">
@@ -520,12 +544,14 @@
         <span class="glass">🔍</span>
         <input class="search-input" id="orderSearch" placeholder="Buscar por producto o cliente..." oninput="renderOrders()">
       </div>
+      <button type="button" class="cm-filter-chip" id="btnFiltroVencidos" style="margin-bottom:10px;" onclick="toggleFiltroVencidos()">⚠️ Solo vencidos / vencen hoy</button>
       <select class="sort-select" id="orderSort" onchange="renderOrders()">
         <option value="createdAt_desc">Más recientes primero</option>
         <option value="createdAt_asc">Más antiguos primero</option>
         <option value="cliente_az">Cliente (A → Z)</option>
         <option value="item_az">Ítem (A → Z)</option>
         <option value="entrega_asc">Fecha de entrega (más próxima)</option>
+        <option value="vencidos_primero">Vencidos / vencen hoy primero</option>
         <option value="precio_desc">Precio (mayor a menor)</option>
         <option value="estado">Estado</option>
       </select>
@@ -639,6 +665,10 @@
       <input type="checkbox" id="pedidoCobrado" style="width:auto;">
       <label for="pedidoCobrado" style="margin:0;font-size:13.5px;color:var(--ink);font-weight:400;">Ya está cobrado</label>
     </div>
+    <div id="pedidoHistorialWrap" style="display:none;margin-bottom:12px;">
+      <p style="font-size:12px;color:var(--ink-dim);text-transform:uppercase;letter-spacing:.06em;margin:0 0 6px;">Historial de estados</p>
+      <div id="pedidoHistorial"></div>
+    </div>
     <div class="sheet-actions">
       <button class="btn btn-danger" id="btnEliminarPedidoForm" style="display:none;" onclick="deletePedido()">Eliminar</button>
       <button class="btn btn-secondary" onclick="closeSheet('sheetPedido')">Cancelar</button>
@@ -709,6 +739,27 @@
 </div>
 
 <!-- Sheet: gestión de vendedores (solo casa matriz) -->
+<!-- Sheet: mini-dashboard (solo casa matriz) -->
+<div class="sheet-backdrop" id="sheetDashboard">
+  <div class="sheet">
+    <div class="sheet-handle"></div>
+    <h3>📊 Dashboard</h3>
+    <div id="dashboardMesLabel" class="dash-mes-label"></div>
+    <div class="dash-totales" id="dashTotales"></div>
+    <div class="dash-block">
+      <h4>Pedidos por estado</h4>
+      <div id="dashEstados"></div>
+    </div>
+    <div class="dash-block">
+      <h4>Por vendedor (mes actual)</h4>
+      <div id="dashVendedores"></div>
+    </div>
+    <div class="sheet-actions">
+      <button class="btn btn-secondary" style="width:100%;" onclick="closeSheet('sheetDashboard')">Cerrar</button>
+    </div>
+  </div>
+</div>
+
 <div class="sheet-backdrop" id="sheetVendedores">
   <div class="sheet">
     <div class="sheet-handle"></div>
@@ -859,6 +910,12 @@ let casaMatrizVendedores = [];           // [{id, nombre}]
 let overridesData = { clients:{}, orders:{} }; // overrides conocidos/aplicados: {[id]:{campos,_at}}
 let cmConsolidado = { clients:[], orders:[] }; // datos combinados de todos los vendedores (solo modo casa matriz)
 let cmFiltroVendedor = '';
+let filtroVencidos = false;
+function toggleFiltroVencidos(){
+  filtroVencidos = !filtroVencidos;
+  document.getElementById('btnFiltroVencidos').classList.toggle('active', filtroVencidos);
+  renderOrders();
+}
 let fbApp = null, fbAuth = null, fbDb = null, fbSdk = null; // instancia y funciones de Firebase, una vez cargado
 let syncTimer = null;
 let lastSyncAt = null;
@@ -866,6 +923,12 @@ let editandoVendedorId = null;
 
 const STATUS_LABEL = { wip: 'En impresión', ready: 'Listo para entregar', done: 'Entregado' };
 const STATUS_CLASS = { wip: 'status-wip', ready: 'status-ready', done: 'status-done' };
+
+function pushHistorial(arrActual, estado){
+  const arr = Array.isArray(arrActual) ? [...arrActual] : [];
+  arr.push({ estado, at: Date.now() });
+  return arr.slice(-20); // no hace falta guardar un historial infinito
+}
 
 function uid(){ return Date.now().toString(36) + Math.random().toString(36).slice(2,7); }
 
@@ -892,6 +955,10 @@ function migrarCobradoViejos(){
   orders.forEach(o=>{
     if(o.cobrado === undefined){
       o.cobrado = o.estado === 'done';
+      changed = true;
+    }
+    if(!Array.isArray(o.historialEstados)){
+      o.historialEstados = [{ estado: o.estado, at: o.createdAt || Date.now() }];
       changed = true;
     }
   });
@@ -1002,7 +1069,7 @@ function renderClients(){
       <div class="card client-row" onclick="openClienteDetalle('${c.id}')">
         <div class="avatar">${initial}</div>
         <div class="client-info">
-          <div class="client-name">${escapeHtml(c.nombre)}${c._cmOverride ? overrideChip() : ''}</div>
+          <div class="client-name">${escapeHtml(c.nombre)}${c._cmOverride ? overrideChip('clients', c.id) : ''}</div>
           <div class="client-meta">
             ${c.telefono ? `<span>📞 ${escapeHtml(c.telefono)}</span>` : ''}
             ${c.email ? `<span>✉️ ${escapeHtml(c.email)}</span>` : ''}
@@ -1144,10 +1211,13 @@ function renderOrders(){
   if(casaMatrizModo && cmFiltroVendedor){
     base = base.filter(o => (o.vendedor||'') === cmFiltroVendedor);
   }
+  if(filtroVencidos){
+    base = base.filter(o => estadoEntrega(o) !== null);
+  }
   if(base.length === 0){
     list.innerHTML = baseAll.length === 0
       ? emptyState('📦', 'No hay pedidos cargados', 'Tocá + para anotar el primer pedido')
-      : emptyState('🔍', 'Sin pedidos para este filtro', 'Probá con otro vendedor');
+      : emptyState('🔍', filtroVencidos ? 'No hay pedidos vencidos ni que venzan hoy 🎉' : 'Sin pedidos para este filtro', 'Probá con otro filtro');
     return;
   }
   const sortMode = document.getElementById('orderSort')?.value || 'createdAt_desc';
@@ -1181,6 +1251,16 @@ function renderOrders(){
         if(!a.fecha) return 1;
         if(!b.fecha) return -1;
         return a.fecha.localeCompare(b.fecha);
+      case 'vencidos_primero': {
+        const rank = { vencido: 0, hoy: 1 };
+        const ra = rank[estadoEntrega(a)] ?? 2;
+        const rb = rank[estadoEntrega(b)] ?? 2;
+        if(ra !== rb) return ra - rb;
+        if(!a.fecha && !b.fecha) return 0;
+        if(!a.fecha) return 1;
+        if(!b.fecha) return -1;
+        return a.fecha.localeCompare(b.fecha);
+      }
       case 'precio_desc':
         return ordTotal(b) - ordTotal(a);
       case 'estado':
@@ -1198,8 +1278,8 @@ function renderOrders(){
       <div class="card">
         <div class="order-card">
           <div class="order-main">
-            <div class="order-item">${escapeHtml(ordResumen(o))}${o._cmOverride ? overrideChip() : ''}</div>
-            <div class="order-client">${cliente ? escapeHtml(cliente.nombre) : 'Sin cliente'}${o.fecha ? ' · '+formatDate(o.fecha) : ''}</div>
+            <div class="order-item">${escapeHtml(ordResumen(o))}${o._cmOverride ? overrideChip('orders', o.id) : ''}</div>
+            <div class="order-client">${cliente ? escapeHtml(cliente.nombre) : 'Sin cliente'}${o.fecha ? ' · '+formatDate(o.fecha) : ''}${badgeEntrega(o)}</div>
             <div style="display:flex;gap:6px;flex-wrap:wrap;">
               <div class="status-chip ${STATUS_CLASS[o.estado]}" onclick="cycleStatus('${o.id}')">${STATUS_LABEL[o.estado]}</div>
               <div class="status-chip ${o.cobrado ? 'status-done' : 'status-ready'}" onclick="toggleCobrado('${o.id}')">${o.cobrado ? '💰 Cobrado' : '⏳ Sin cobrar'}</div>
@@ -1215,6 +1295,19 @@ function renderOrders(){
         </div>
       </div>`;
   }).join('');
+}
+
+function estadoEntrega(o){
+  if(!o.fecha || o.estado === 'done') return null;
+  const hoy = new Date().toISOString().slice(0,10);
+  if(o.fecha < hoy) return 'vencido';
+  if(o.fecha === hoy) return 'hoy';
+  return null;
+}
+function badgeEntrega(o){
+  const e = estadoEntrega(o);
+  if(!e) return '';
+  return ` · <span class="due-badge due-${e}">${e === 'vencido' ? '🔴 Vencido' : '🟡 Vence hoy'}</span>`;
 }
 
 /* ---------- Productos dentro del formulario de pedido ---------- */
@@ -1337,6 +1430,16 @@ function openPedidoForm(id){
   document.getElementById('pedidoEstado').value = o?.estado || 'wip';
   document.getElementById('pedidoCobrado').checked = !!o?.cobrado;
 
+  const historialWrap = document.getElementById('pedidoHistorialWrap');
+  if(o && Array.isArray(o.historialEstados) && o.historialEstados.length){
+    historialWrap.style.display = '';
+    document.getElementById('pedidoHistorial').innerHTML = [...o.historialEstados].reverse().map(h => `
+      <div class="detail-row"><span class="detail-label">${STATUS_LABEL[h.estado] || h.estado}</span><span class="detail-value">${formatDateTime(h.at)}</span></div>
+    `).join('');
+  }else{
+    historialWrap.style.display = 'none';
+  }
+
   document.getElementById('productosList').innerHTML = '';
   if(o && o.items && o.items.length){
     o.items.forEach(p => addProductRow(p));
@@ -1374,7 +1477,7 @@ async function savePedido(){
     const idx = orders.findIndex(o=>o.id===id);
     orders[idx] = { ...orders[idx], ...data };
   }else{
-    orders.push({ id: uid(), createdAt: Date.now(), vendedor: vendorName || null, ...data });
+    orders.push({ id: uid(), createdAt: Date.now(), vendedor: vendorName || null, historialEstados: [{ estado: data.estado, at: Date.now() }], ...data });
   }
   await persist('orders', orders);
   renderOrders();
@@ -1405,11 +1508,13 @@ async function cycleStatus(id){
     const o = cmConsolidado.orders.find(x=>x.id===id);
     if(!o) return;
     const nuevoEstado = order_states[(order_states.indexOf(o.estado)+1) % 3];
-    await guardarOverrideCasaMatriz('orders', id, { estado: nuevoEstado });
+    const historial = pushHistorial(o.historialEstados, nuevoEstado);
+    await guardarOverrideCasaMatriz('orders', id, { estado: nuevoEstado, historialEstados: historial });
     return;
   }
   const order = orders.find(o=>o.id===id);
   order.estado = order_states[(order_states.indexOf(order.estado)+1) % 3];
+  order.historialEstados = pushHistorial(order.historialEstados, order.estado);
   await persist('orders', orders);
   renderOrders();
 }
@@ -1442,7 +1547,7 @@ function renderProspects(){
       <div style="flex:1;">
         <div class="prospect-name">${escapeHtml(p.nombre)}</div>
         ${p.nota ? `<div class="prospect-note">${escapeHtml(p.nota)}</div>` : ''}
-        <div class="prospect-date">${formatDate(new Date(p.createdAt).toISOString().slice(0,10))}</div>
+        <div class="prospect-date">${formatDate(new Date(p.createdAt).toISOString().slice(0,10))}${(p.lat && p.lng) ? ` · <a href="https://maps.google.com/?q=${p.lat},${p.lng}" target="_blank" onclick="event.stopPropagation()" style="color:var(--accent);text-decoration:none;">📍 Ver ubicación</a>` : ''}</div>
       </div>
       <div style="display:flex;flex-direction:column;gap:6px;flex:none;">
         <button class="btn btn-secondary" style="padding:6px 10px;font-size:11.5px;" onclick="convertirProspectoEnCliente('${p.id}')">→ Cliente</button>
@@ -1461,16 +1566,35 @@ function openProspectoForm(){
 async function saveProspecto(){
   const nombre = document.getElementById('prospectoNombre').value.trim();
   if(!nombre){ alert('Poné el nombre o dirección del lugar'); return; }
-  prospects.push({
+  const prospecto = {
     id: uid(),
     nombre,
     nota: document.getElementById('prospectoNota').value.trim(),
     createdAt: Date.now(),
-    lat: null, lng: null // TODO(Maps): completar cuando se integre geolocalización
-  });
+    lat: null, lng: null
+  };
+  prospects.push(prospecto);
   await persist('prospects', prospects);
   renderProspects();
   closeSheet('sheetProspecto');
+
+  // Ubicación GPS: se captura después de guardar, sin bloquear la carga
+  // (el celular puede tardar o el usuario puede no dar permiso). Si llega,
+  // se agrega en segundo plano y se vuelve a guardar.
+  if(navigator.geolocation){
+    navigator.geolocation.getCurrentPosition(
+      async (pos)=>{
+        const p = prospects.find(x=>x.id===prospecto.id);
+        if(!p) return;
+        p.lat = pos.coords.latitude;
+        p.lng = pos.coords.longitude;
+        await persist('prospects', prospects);
+        renderProspects();
+      },
+      ()=>{ /* sin permiso o sin señal GPS: el prospecto queda igual, sin ubicación */ },
+      { timeout: 8000 }
+    );
+  }
 }
 
 function convertirProspectoEnCliente(id){
@@ -1551,6 +1675,11 @@ function formatDate(iso){
   const [y,m,d] = iso.split('-');
   return `${d}/${m}`;
 }
+function formatDateTime(ts){
+  if(!ts) return '';
+  const d = new Date(ts);
+  return d.toLocaleDateString('es-AR', {day:'2-digit', month:'2-digit'}) + ' ' + d.toLocaleTimeString('es-AR', {hour:'2-digit', minute:'2-digit'});
+}
 
 /* =========================================================
    OVERRIDES (ajustes de casa matriz sobre datos del vendedor)
@@ -1595,8 +1724,34 @@ function vendorChip(name){
   if(!name) return '';
   return `<span class="vendor-chip mono">${escapeHtml(name)}</span>`;
 }
-function overrideChip(){
-  return `<span class="override-chip" title="Actualizado desde casa matriz">🏢</span>`;
+function overrideChip(tipo, id){
+  return `<span class="override-chip" title="Casa matriz cambió algo acá — tocá para ver qué" onclick="event.stopPropagation(); verDetalleOverride('${tipo}','${id}')">🏢</span>`;
+}
+
+const CAMPO_LABEL = {
+  nombre: 'Nombre', telefono: 'Teléfono', email: 'Email', direccion: 'Dirección',
+  notas: 'Notas', vendedor: 'Vendedor',
+  estado: 'Estado', cobrado: 'Cobrado', fecha: 'Entrega',
+};
+function formatValorCampo(campo, valor){
+  if(campo === 'estado') return STATUS_LABEL[valor] || valor;
+  if(campo === 'cobrado') return valor ? 'Sí' : 'No';
+  if(campo === 'fecha') return valor ? formatDate(valor) : '—';
+  if(valor === '' || valor == null) return '—';
+  return String(valor);
+}
+function verDetalleOverride(tipo, id){
+  const ov = overridesData?.[tipo]?.[id];
+  if(!ov){ alert('No se encontró el detalle de este cambio.'); return; }
+  const original = (tipo === 'clients' ? clients : orders).find(r => r.id === id) || {};
+  if(ov.campos?._eliminado){
+    alert('Casa matriz eliminó este pedido el ' + formatDateTime(ov._at) + '.\nEl dato original sigue guardado en la nube por si hay que revertirlo a mano.');
+    return;
+  }
+  const campos = Object.keys(ov.campos || {}).filter(k => k in CAMPO_LABEL);
+  if(campos.length === 0){ alert('Casa matriz hizo un cambio el ' + formatDateTime(ov._at) + ', pero no hay detalle de campos para mostrar.'); return; }
+  const lineas = campos.map(k => `• ${CAMPO_LABEL[k]}: "${formatValorCampo(k, original[k])}" → "${formatValorCampo(k, ov.campos[k])}"`);
+  alert(`Cambiado por casa matriz el ${formatDateTime(ov._at)}:\n\n${lineas.join('\n')}`);
 }
 function renderCmFilterBar(containerId){
   const el = document.getElementById(containerId);
@@ -1703,6 +1858,67 @@ function renderVendedoresList(){
       </div>`).join('')
     : '<p style="color:var(--ink-dim);font-size:13px;">Todavía no agregaste vendedores.</p>';
 }
+function abrirDashboard(){
+  if(!casaMatrizModo){ alert('El dashboard es solo para casa matriz.'); return; }
+
+  const ahora = new Date();
+  const inicioMes = new Date(ahora.getFullYear(), ahora.getMonth(), 1).getTime();
+  const finMes = new Date(ahora.getFullYear(), ahora.getMonth()+1, 1).getTime();
+  const nombreMes = ahora.toLocaleDateString('es-AR', { month:'long', year:'numeric' });
+  document.getElementById('dashboardMesLabel').textContent = nombreMes.charAt(0).toUpperCase() + nombreMes.slice(1);
+
+  // Un pedido "es del mes" según su fecha de entrega si la tiene cargada,
+  // y si no, según cuándo se creó — así no se pierden pedidos sin fecha.
+  const esDelMes = (o) => {
+    const ts = o.fecha ? new Date(o.fecha + 'T00:00:00').getTime() : (o.createdAt || 0);
+    return ts >= inicioMes && ts < finMes;
+  };
+
+  const pedidosMes = cmConsolidado.orders.filter(esDelMes);
+  const facturadoMes = pedidosMes.reduce((sum,o)=> sum + ordTotal(o), 0);
+  const cobradoMes = pedidosMes.filter(o=>o.cobrado).reduce((sum,o)=> sum + ordTotal(o), 0);
+
+  document.getElementById('dashTotales').innerHTML = `
+    <div class="dash-stat">
+      <div class="dash-stat-value">$${facturadoMes.toLocaleString('es-AR')}</div>
+      <div class="dash-stat-label">Facturado del mes</div>
+    </div>
+    <div class="dash-stat">
+      <div class="dash-stat-value">$${cobradoMes.toLocaleString('es-AR')}</div>
+      <div class="dash-stat-label">Ya cobrado</div>
+    </div>
+    <div class="dash-stat">
+      <div class="dash-stat-value">${pedidosMes.length}</div>
+      <div class="dash-stat-label">Pedidos del mes</div>
+    </div>
+  `;
+
+  // Pedidos por estado: sobre el total consolidado (no solo el mes), para
+  // saber cuánto hay hoy en cada etapa del taller.
+  const porEstado = { wip: 0, ready: 0, done: 0 };
+  cmConsolidado.orders.forEach(o => { if(porEstado[o.estado] !== undefined) porEstado[o.estado]++; });
+  document.getElementById('dashEstados').innerHTML = Object.keys(porEstado).map(k => `
+    <div class="dash-row"><span>${STATUS_LABEL[k]}</span><span class="dash-row-value">${porEstado[k]}</span></div>
+  `).join('');
+
+  // Comparación entre vendedores: facturado y cantidad de pedidos del mes.
+  const porVendedor = {};
+  pedidosMes.forEach(o=>{
+    const v = o.vendedor || 'Sin asignar';
+    if(!porVendedor[v]) porVendedor[v] = { total: 0, cantidad: 0 };
+    porVendedor[v].total += ordTotal(o);
+    porVendedor[v].cantidad += 1;
+  });
+  const vendedoresOrdenados = Object.entries(porVendedor).sort((a,b)=> b[1].total - a[1].total);
+  document.getElementById('dashVendedores').innerHTML = vendedoresOrdenados.length
+    ? vendedoresOrdenados.map(([nombre, d]) => `
+        <div class="dash-row"><span>${escapeHtml(nombre)} · ${d.cantidad} ped.</span><span class="dash-row-value">$${d.total.toLocaleString('es-AR')}</span></div>
+      `).join('')
+    : '<p style="color:var(--ink-dim);font-size:12.5px;">Sin pedidos este mes todavía.</p>';
+
+  openSheet('sheetDashboard');
+}
+
 function abrirGestionVendedores(){
   renderVendedoresList();
   openSheet('sheetVendedores');
