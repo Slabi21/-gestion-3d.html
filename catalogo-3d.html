@@ -176,13 +176,23 @@
   .detalle-galeria::-webkit-scrollbar{ display:none; }
   .detalle-galeria img{
     flex:0 0 100%; width:100%; aspect-ratio:1/1; object-fit:cover; scroll-snap-align:center; display:block;
+    scroll-snap-stop: always;
   }
+  .detalle-dots{
+    display:none; justify-content:center; align-items:center; gap:6px; padding:10px 0 0;
+  }
+  .detalle-dot{
+    width:6px; height:6px; border-radius:50%; background: var(--border); flex:none;
+    transition: background .15s ease, transform .15s ease;
+  }
+  .detalle-dot.active{ background: var(--accent); transform: scale(1.35); }
   .detalle-info{ padding:16px 18px 4px; overflow-y:auto; }
   .detalle-cat{ font-size:11px; text-transform:uppercase; letter-spacing:.06em; color: var(--accent); font-weight:700; }
   .detalle-nombre{ margin:3px 0 8px; font-size:18px; }
   .detalle-precio{ font-size:21px; font-weight:700; color: var(--accent); }
   .detalle-dias{ font-size:12.5px; color: var(--ink-dim); margin-top:3px; font-family:'JetBrains Mono',monospace; }
-  .detalle-desc{ font-size:13.5px; line-height:1.65; color: var(--ink); margin-top:14px; white-space:pre-wrap; }
+  .detalle-desc{ font-size:13.5px; line-height:1.65; color: var(--ink); margin-top:14px; white-space:pre-wrap; }  .sheet-backdrop#sheetDetalle{ align-items:flex-start; }
+  #sheetDetalle .sheet{ border-radius:0 0 20px 20px; }
 </style>
 </head>
 <body>
@@ -313,6 +323,7 @@
   <div class="sheet" style="padding:0; max-height:92vh; overflow:hidden; display:flex; flex-direction:column;">
     <div class="sheet-handle" style="margin:10px auto 0; flex:none;"></div>
     <div class="detalle-galeria" id="detalleGaleria"></div>
+    <div class="detalle-dots" id="detalleDots"></div>
     <div class="detalle-info">
       <div class="detalle-cat" id="detalleCat"></div>
       <h3 class="detalle-nombre" id="detalleNombre"></h3>
@@ -628,15 +639,45 @@ function productoCardHtml(p){
 }
 
 /* ---------- Detalle ampliado del producto ---------- */
+let detalleFotosCount = 0;
+
+function actualizarDotsActivo(){
+  if(detalleFotosCount <= 1) return;
+  const galeria = document.getElementById('detalleGaleria');
+  const ancho = galeria.clientWidth || 1;
+  const idx = Math.round(galeria.scrollLeft / ancho);
+  document.querySelectorAll('#detalleDots .detalle-dot').forEach((d, i) => d.classList.toggle('active', i === idx));
+}
+document.getElementById('detalleGaleria').addEventListener('scroll', () => {
+  requestAnimationFrame(actualizarDotsActivo);
+});
+
 window.abrirDetalleProducto = function(id){
   const p = productos.find(x => x.id === id);
   if(!p) return;
+
+  const backdrop = document.getElementById('sheetDetalle');
+  const sheetEl = backdrop.querySelector('.sheet');
+  const topbarAlto = document.querySelector('.topbar').offsetHeight;
+  backdrop.style.paddingTop = topbarAlto + 'px';
+  sheetEl.style.maxHeight = `calc(100vh - ${topbarAlto}px)`;
+
   const fotos = (p.fotos && p.fotos.length) ? p.fotos : (p.fotoUrl ? [p.fotoUrl] : []);
   const galeria = document.getElementById('detalleGaleria');
   galeria.innerHTML = fotos.length
     ? fotos.map(url => `<img src="${escapeAttr(url)}" alt="${escapeAttr(p.nombre)}" onerror="this.onerror=null;this.src='${DEFAULT_PHOTO}';">`).join('')
     : `<img src="${DEFAULT_PHOTO}" alt="${escapeAttr(p.nombre)}">`;
   galeria.scrollLeft = 0;
+
+  detalleFotosCount = fotos.length;
+  const dotsEl = document.getElementById('detalleDots');
+  if(fotos.length > 1){
+    dotsEl.style.display = 'flex';
+    dotsEl.innerHTML = fotos.map((_, i) => `<span class="detalle-dot${i === 0 ? ' active' : ''}"></span>`).join('');
+  }else{
+    dotsEl.style.display = 'none';
+    dotsEl.innerHTML = '';
+  }
 
   document.getElementById('detalleCat').textContent = p.categoria || '';
   document.getElementById('detalleNombre').textContent = p.nombre || '';
