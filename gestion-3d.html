@@ -695,6 +695,43 @@
   </div>
 </div>
 
+<!-- Sheet: compartir catálogo por WhatsApp -->
+<div class="sheet-backdrop" id="sheetCompartirCatalogo">
+  <div class="sheet">
+    <div class="sheet-handle"></div>
+    <h3>Compartir catálogo</h3>
+    <div class="field">
+      <label>Cliente guardado</label>
+      <input id="compartirClienteBuscador" placeholder="Buscar por nombre o teléfono..." oninput="renderCompartirClienteList()">
+    </div>
+    <div class="catalog-pick-list" id="compartirClienteList" style="max-height:150px;"></div>
+
+    <div class="field" style="margin-top:14px;">
+      <label>...o un número nuevo</label>
+      <input id="compartirNumeroInput" type="tel" placeholder="11 5555-5555" oninput="onCompartirNumeroInput()">
+      <span class="field-hint">Se agrega +54 9 solo. Escribilo sin el 0 ni el 15 (ej: 11 5555-5555)</span>
+    </div>
+    <div id="compartirGuardarWrap" style="display:none;">
+      <div class="field">
+        <label>Nombre (para guardarlo en Clientes)</label>
+        <input id="compartirNombreNuevo" placeholder="Ej: María, la de la esquina">
+      </div>
+      <div class="field" style="display:flex;align-items:center;gap:8px;">
+        <input type="checkbox" id="compartirGuardarCheck" style="width:auto;" checked>
+        <label for="compartirGuardarCheck" style="margin:0;font-size:13.5px;color:var(--ink);font-weight:400;">Guardarlo en Clientes para no perderlo</label>
+      </div>
+    </div>
+
+    <p id="compartirError" class="field-hint" style="color:var(--danger);"></p>
+
+    <div class="sheet-actions">
+      <button class="btn btn-secondary" onclick="closeSheet('sheetCompartirCatalogo')">Cancelar</button>
+      <button class="btn btn-primary" onclick="confirmarCompartirCatalogo()">💬 Enviar por WhatsApp</button>
+    </div>
+    <button type="button" class="btn btn-secondary" style="width:100%;margin-top:8px;" onclick="compartirCatalogoGenerico()">Compartir de otra forma (sin WhatsApp)</button>
+  </div>
+</div>
+
 <!-- Sheet: nuevo prospecto -->
 <div class="sheet-backdrop" id="sheetProspecto">
   <div class="sheet">
@@ -2213,7 +2250,86 @@ document.getElementById('catalogBtn').addEventListener('click', ()=>{
   window.open(CATALOGO_URL, '_blank');
 });
 
-document.getElementById('shareCatalogBtn').addEventListener('click', async ()=>{
+let compartirClienteSeleccionado = null;
+
+document.getElementById('shareCatalogBtn').addEventListener('click', ()=>{
+  compartirClienteSeleccionado = null;
+  document.getElementById('compartirClienteBuscador').value = '';
+  document.getElementById('compartirNumeroInput').value = '';
+  document.getElementById('compartirNombreNuevo').value = '';
+  document.getElementById('compartirGuardarCheck').checked = true;
+  document.getElementById('compartirGuardarWrap').style.display = 'none';
+  document.getElementById('compartirError').textContent = '';
+  renderCompartirClienteList();
+  openSheet('sheetCompartirCatalogo');
+});
+
+function renderCompartirClienteList(){
+  const q = (document.getElementById('compartirClienteBuscador').value || '').toLowerCase().trim();
+  const cont = document.getElementById('compartirClienteList');
+  const fuente = casaMatrizModo ? cmConsolidado.clients : clients;
+  let lista = fuente.filter(c => c.telefono);
+  if(q){
+    lista = lista.filter(c => (c.nombre||'').toLowerCase().includes(q) || (c.telefono||'').toLowerCase().includes(q));
+  }
+  if(!lista.length){
+    cont.innerHTML = `<div style="font-size:12.5px;color:var(--ink-dim);padding:8px 2px;">${fuente.length ? 'No hay clientes con teléfono que coincidan.' : 'Todavía no tenés clientes guardados.'}</div>`;
+    return;
+  }
+  cont.innerHTML = lista.slice(0, 30).map(c => `
+    <div class="catalog-pick-item" onclick="elegirClienteCompartir('${c.id}')">
+      <div class="catalog-pick-info">
+        <div class="catalog-pick-name">${escapeHtml(c.nombre)}</div>
+        <div class="catalog-pick-meta">📞 ${escapeHtml(c.telefono)}</div>
+      </div>
+    </div>
+  `).join('');
+}
+
+window.elegirClienteCompartir = function(id){
+  const fuente = casaMatrizModo ? cmConsolidado.clients : clients;
+  const c = fuente.find(x => x.id === id);
+  if(!c) return;
+  compartirClienteSeleccionado = c;
+  document.getElementById('compartirNumeroInput').value = c.telefono || '';
+  document.getElementById('compartirGuardarWrap').style.display = 'none';
+  document.getElementById('compartirError').textContent = '';
+};
+
+window.onCompartirNumeroInput = function(){
+  // Si lo tipean a mano, ya no es el cliente que habían elegido de la lista.
+  compartirClienteSeleccionado = null;
+  const val = document.getElementById('compartirNumeroInput').value.trim();
+  document.getElementById('compartirGuardarWrap').style.display = (val && !casaMatrizModo) ? '' : 'none';
+  document.getElementById('compartirError').textContent = '';
+};
+
+window.confirmarCompartirCatalogo = async function(){
+  const numeroRaw = document.getElementById('compartirNumeroInput').value.trim();
+  if(!numeroRaw){ document.getElementById('compartirError').textContent = 'Elegí un cliente guardado o escribí un número.'; return; }
+  const telefonoNormalizado = normalizarTelefonoAR(numeroRaw);
+  const digits = telefonoNormalizado.replace(/\D/g, '');
+  if(digits.length < 12){ document.getElementById('compartirError').textContent = 'Revisá el número, parece incompleto.'; return; }
+
+  // Si es un número nuevo (no venía de la lista de clientes) y tildaron
+  // guardarlo, lo suma a Clientes ahí mismo para no perder el contacto.
+  if(!compartirClienteSeleccionado && !casaMatrizModo && document.getElementById('compartirGuardarCheck').checked){
+    const nombre = document.getElementById('compartirNombreNuevo').value.trim() || 'Sin nombre';
+    clients.push({
+      id: uid(), createdAt: Date.now(), documentoUrl: null, vendedor: vendorName || null,
+      nombre, telefono: telefonoNormalizado, email: '', direccion: '',
+      notas: 'Contacto guardado al compartir el catálogo.',
+    });
+    await persist('clients', clients);
+    renderClients();
+  }
+
+  const texto = 'Mirá nuestro catálogo de productos 3D:';
+  window.open(`https://wa.me/${digits}?text=${encodeURIComponent(texto + ' ' + CATALOGO_URL)}`, '_blank');
+  closeSheet('sheetCompartirCatalogo');
+};
+
+window.compartirCatalogoGenerico = async function(){
   const texto = 'Mirá nuestro catálogo de productos 3D:';
   if(navigator.share){
     try{
@@ -2222,12 +2338,12 @@ document.getElementById('shareCatalogBtn').addEventListener('click', async ()=>{
   }else{
     try{
       await navigator.clipboard.writeText(`${texto} ${CATALOGO_URL}`);
-      alert('Copiado. Pegalo en el chat de WhatsApp (o donde quieras) del cliente.');
+      alert('Copiado. Pegalo donde quieras.');
     }catch(e){
       prompt('Copiá este link para compartirlo:', CATALOGO_URL);
     }
   }
-});
+};
 
 /* --- Tamaño de letra --- */
 const FS_KEY = STORAGE_PREFIX + 'fontScale';
