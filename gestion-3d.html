@@ -699,6 +699,13 @@
     <input type="hidden" id="prospectoId">
     <div class="field"><label>Lugar</label><input id="prospectoNombre" placeholder="Ej: Ferretería Don José, Av. 44"></div>
     <div class="field"><label>Nota</label><textarea id="prospectoNota" placeholder="Vidriera grande, tal vez le interese cartelería 3D..."></textarea></div>
+    <div class="field">
+      <label>Ubicación (opcional)</label>
+      <input type="hidden" id="prospectoLat">
+      <input type="hidden" id="prospectoLng">
+      <button type="button" class="btn btn-secondary" style="width:100%;" onclick="capturarUbicacionProspecto()">📍 Usar mi ubicación actual</button>
+      <span class="field-hint" id="prospectoUbicacionEstado"></span>
+    </div>
     <div class="sheet-actions">
       <button class="btn btn-secondary" onclick="closeSheet('sheetProspecto')">Cancelar</button>
       <button class="btn btn-primary" onclick="saveProspecto()">Guardar</button>
@@ -1468,6 +1475,10 @@ async function savePedido(){
 
   if(casaMatrizModo){
     if(!id){ alert('Casa matriz no carga pedidos nuevos, solo edita los que ya subieron los vendedores.'); return; }
+    const actual = cmConsolidado.orders.find(o=>o.id===id);
+    if(actual && data.estado !== actual.estado){
+      data.historialEstados = pushHistorial(actual.historialEstados, data.estado);
+    }
     await guardarOverrideCasaMatriz('orders', id, data);
     closeSheet('sheetPedido');
     return;
@@ -1475,7 +1486,11 @@ async function savePedido(){
 
   if(id){
     const idx = orders.findIndex(o=>o.id===id);
-    orders[idx] = { ...orders[idx], ...data };
+    const anterior = orders[idx];
+    const historialEstados = data.estado !== anterior.estado
+      ? pushHistorial(anterior.historialEstados, data.estado)
+      : anterior.historialEstados;
+    orders[idx] = { ...anterior, ...data, historialEstados };
   }else{
     orders.push({ id: uid(), createdAt: Date.now(), vendedor: vendorName || null, historialEstados: [{ estado: data.estado, at: Date.now() }], ...data });
   }
@@ -1560,41 +1575,54 @@ function renderProspects(){
 function openProspectoForm(){
   document.getElementById('prospectoNombre').value = '';
   document.getElementById('prospectoNota').value = '';
+  document.getElementById('prospectoLat').value = '';
+  document.getElementById('prospectoLng').value = '';
+  document.getElementById('prospectoUbicacionEstado').textContent = '';
   openSheet('sheetProspecto');
+}
+
+function capturarUbicacionProspecto(){
+  const estado = document.getElementById('prospectoUbicacionEstado');
+  if(!navigator.geolocation){
+    estado.textContent = '⚠️ Este celular/navegador no soporta ubicación.';
+    return;
+  }
+  estado.textContent = '📡 Buscando ubicación...';
+  navigator.geolocation.getCurrentPosition(
+    (pos)=>{
+      document.getElementById('prospectoLat').value = pos.coords.latitude;
+      document.getElementById('prospectoLng').value = pos.coords.longitude;
+      estado.textContent = '✅ Ubicación agregada';
+    },
+    (err)=>{
+      document.getElementById('prospectoLat').value = '';
+      document.getElementById('prospectoLng').value = '';
+      if(err.code === err.PERMISSION_DENIED){
+        estado.textContent = '⚠️ Sin permiso de ubicación. Activalo para este sitio en el navegador e intentá de nuevo.';
+      }else{
+        estado.textContent = '⚠️ No se pudo obtener la ubicación. Revisá que el GPS del celular esté activado e intentá de nuevo.';
+      }
+    },
+    { timeout: 10000, enableHighAccuracy: true }
+  );
 }
 
 async function saveProspecto(){
   const nombre = document.getElementById('prospectoNombre').value.trim();
   if(!nombre){ alert('Poné el nombre o dirección del lugar'); return; }
-  const prospecto = {
+  const latVal = document.getElementById('prospectoLat').value;
+  const lngVal = document.getElementById('prospectoLng').value;
+  prospects.push({
     id: uid(),
     nombre,
     nota: document.getElementById('prospectoNota').value.trim(),
     createdAt: Date.now(),
-    lat: null, lng: null
-  };
-  prospects.push(prospecto);
+    lat: latVal ? Number(latVal) : null,
+    lng: lngVal ? Number(lngVal) : null,
+  });
   await persist('prospects', prospects);
   renderProspects();
   closeSheet('sheetProspecto');
-
-  // Ubicación GPS: se captura después de guardar, sin bloquear la carga
-  // (el celular puede tardar o el usuario puede no dar permiso). Si llega,
-  // se agrega en segundo plano y se vuelve a guardar.
-  if(navigator.geolocation){
-    navigator.geolocation.getCurrentPosition(
-      async (pos)=>{
-        const p = prospects.find(x=>x.id===prospecto.id);
-        if(!p) return;
-        p.lat = pos.coords.latitude;
-        p.lng = pos.coords.longitude;
-        await persist('prospects', prospects);
-        renderProspects();
-      },
-      ()=>{ /* sin permiso o sin señal GPS: el prospecto queda igual, sin ubicación */ },
-      { timeout: 8000 }
-    );
-  }
 }
 
 function convertirProspectoEnCliente(id){
