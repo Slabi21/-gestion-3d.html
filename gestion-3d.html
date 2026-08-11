@@ -937,7 +937,7 @@ function clientesFuente(){
 }
 function ordersFuente(){
   if(casaMatrizModo) return cmConsolidado.orders;
-  return orders.map(o => aplicarOverride(o, 'orders'));
+  return orders.map(o => aplicarOverride(o, 'orders')).filter(o => !o._eliminado);
 }
 
 function renderClients(){
@@ -1296,7 +1296,7 @@ function openPedidoForm(id){
   }
   recalcTotal();
   const btnEliminar = document.getElementById('btnEliminarPedidoForm');
-  if(btnEliminar) btnEliminar.style.display = (id && !casaMatrizModo) ? '' : 'none';
+  if(btnEliminar) btnEliminar.style.display = id ? '' : 'none';
   openSheet('sheetPedido');
 }
 
@@ -1335,7 +1335,12 @@ async function savePedido(){
 async function deletePedido(){
   const id = document.getElementById('pedidoId').value;
   if(!id) return;
-  if(casaMatrizModo){ alert('Casa matriz no elimina pedidos, solo edita. La baja la hace el vendedor desde su propia app.'); return; }
+  if(casaMatrizModo){
+    if(!confirm('¿Eliminar este pedido? El vendedor va a dejar de verlo. No se puede deshacer.')) return;
+    await eliminarPedidoCasaMatriz(id);
+    closeSheet('sheetPedido');
+    return;
+  }
   if(!confirm('¿Eliminar este pedido? No se puede deshacer.')) return;
   orders = orders.filter(o=>o.id!==id);
   await persist('orders', orders);
@@ -1497,6 +1502,17 @@ async function guardarOverrideCasaMatriz(tipo, id, campos){
       await fbSdk.setDoc(ref, { overrides: overridesData, updatedAt: Date.now() });
     }catch(e){ console.warn('No se pudo subir el override todavía, se reintenta en el próximo sync', e); }
   }
+}
+
+// Casa matriz no toca el registro original del vendedor (que se sigue
+// subiendo tal cual desde su propia app): marca el pedido como eliminado
+// con un override, igual que hace con cualquier otro cambio de campo.
+// Así el vendedor deja de verlo apenas sincroniza, sin perder el dato
+// real por si algún día hay que revertirlo a mano en Firestore.
+async function eliminarPedidoCasaMatriz(id){
+  await guardarOverrideCasaMatriz('orders', id, { _eliminado: true });
+  cmConsolidado.orders = cmConsolidado.orders.filter(o => o.id !== id);
+  renderAll();
 }
 
 function vendorChip(name){
@@ -1749,7 +1765,10 @@ async function sincronizarCasaMatriz(){
         if(!snap.exists()) continue;
         const data = snap.data();
         (data.clients||[]).forEach(c => clientesAll.push({ ...aplicarOverride(c,'clients'), vendedor: v.nombre }));
-        (data.orders||[]).forEach(o => ordersAll.push({ ...aplicarOverride(o,'orders'), vendedor: v.nombre }));
+        (data.orders||[]).forEach(o => {
+          const conOverride = { ...aplicarOverride(o,'orders'), vendedor: v.nombre };
+          if(!conOverride._eliminado) ordersAll.push(conOverride);
+        });
       }catch(e){ console.warn('No se pudo leer al vendedor', v.nombre, e); }
     }
     cmConsolidado = { clients: clientesAll, orders: ordersAll };
