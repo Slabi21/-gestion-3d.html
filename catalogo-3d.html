@@ -208,6 +208,20 @@
     font-size:8.5px; font-weight:700; text-align:center; padding:1.5px 0; text-transform:uppercase; letter-spacing:.03em;
   }
 
+  /* ---------- Categorías múltiples en el formulario de edición ---------- */
+  .categorias-chips-edit{ display:flex; flex-wrap:wrap; gap:6px; margin-top:10px; }
+  .categoria-chip-edit{
+    display:flex; align-items:center; gap:6px;
+    background: var(--surface-2); border:1px solid var(--border); border-radius:20px;
+    padding:5px 6px 5px 12px; font-size:12.5px;
+  }
+  .categoria-chip-edit button{
+    width:18px; height:18px; border-radius:50%; border:none; background: rgba(255,255,255,.08);
+    color: var(--ink-dim); font-size:10px; line-height:1;
+    display:flex; align-items:center; justify-content:center; cursor:pointer; padding:0; flex:none;
+  }
+  .categoria-chip-edit button:active{ background: rgba(255,255,255,.16); }
+
   /* ---------- Detalle ampliado del producto (vista cliente) ---------- */
   .detalle-galeria{
     display:flex; overflow-x:auto; scroll-snap-type:x mandatory; -webkit-overflow-scrolling:touch;
@@ -327,9 +341,16 @@
       <input id="pNombre" placeholder="Ej: Maceta hexagonal">
     </div>
     <div class="field">
-      <label>Categoría</label>
-      <input id="pCategoria" placeholder="Ej: Decoración" list="categoriasList">
-      <datalist id="categoriasList"></datalist>
+      <label>Categorías</label>
+      <div class="field-row">
+        <div class="field" style="margin-bottom:0;">
+          <input id="pCategoriaInput" placeholder="Ej: Decoración" list="categoriasList" onkeydown="if(event.key==='Enter'){event.preventDefault(); agregarCategoriaEdit();}">
+          <datalist id="categoriasList"></datalist>
+        </div>
+        <button type="button" class="btn btn-secondary" style="width:auto;padding:0 14px;flex:none;" onclick="agregarCategoriaEdit()">Agregar</button>
+      </div>
+      <div class="field-hint">Un producto puede tener varias categorías: va a aparecer repetido en cada una dentro del catálogo. Escribí y tocá "Agregar" (o Enter).</div>
+      <div class="categorias-chips-edit" id="categoriasChipsEdit"></div>
     </div>
     <div class="field-row">
       <div class="field">
@@ -643,6 +664,13 @@ let primerSnapshotLlegado = false;
 let filtroCategoria = '';
 
 function uid(){ return Date.now().toString(36) + Math.random().toString(36).slice(2,7); }
+// Devuelve siempre un array de categorías, con compatibilidad hacia atrás:
+// productos viejos solo tenían "categoria" (string única).
+function categoriasDe(p){
+  if(Array.isArray(p.categorias) && p.categorias.length) return p.categorias;
+  if(p.categoria && p.categoria.trim()) return [p.categoria.trim()];
+  return [];
+}
 function escapeHtml(str){
   return (str||'').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
@@ -722,13 +750,13 @@ function escucharProductos(){
 
 /* ---------- Render ---------- */
 function actualizarDatalistCategorias(){
-  const cats = [...new Set(productos.map(p => (p.categoria||'').trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'es'));
+  const cats = [...new Set(productos.flatMap(categoriasDe))].sort((a,b)=>a.localeCompare(b,'es'));
   document.getElementById('categoriasList').innerHTML = cats.map(c => `<option value="${escapeAttr(c)}">`).join('');
 }
 
 function renderFiltroCategorias(){
   const el = document.getElementById('catFilterBar');
-  const cats = [...new Set(productos.map(p => (p.categoria||'').trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'es'));
+  const cats = [...new Set(productos.flatMap(categoriasDe))].sort((a,b)=>a.localeCompare(b,'es'));
   if(cats.length === 0){ el.innerHTML = ''; return; }
   const chips = [{val:'', label:'Todos'}, ...cats.map(c=>({val:c, label:c}))];
   el.innerHTML = chips.map(c => `
@@ -748,11 +776,11 @@ function renderCatalogo(){
 
   let lista = productos;
   if(filtroCategoria){
-    lista = lista.filter(p => (p.categoria||'').trim() === filtroCategoria);
+    lista = lista.filter(p => categoriasDe(p).includes(filtroCategoria));
   }
   if(q){
     lista = lista.filter(p =>
-      (p.nombre||'').toLowerCase().includes(q) || (p.categoria||'').toLowerCase().includes(q)
+      (p.nombre||'').toLowerCase().includes(q) || categoriasDe(p).join(' ').toLowerCase().includes(q)
     );
   }
 
@@ -775,8 +803,11 @@ function renderCatalogo(){
 
   const grupos = {};
   lista.forEach(p => {
-    const cat = (p.categoria||'').trim() || 'Sin categoría';
-    (grupos[cat] = grupos[cat] || []).push(p);
+    const cats = categoriasDe(p);
+    const catList = cats.length ? cats : ['Sin categoría'];
+    catList.forEach(cat => {
+      (grupos[cat] = grupos[cat] || []).push(p);
+    });
   });
   const nombresCats = Object.keys(grupos).sort((a,b)=>{
     if(a === 'Sin categoría') return 1;
@@ -794,7 +825,7 @@ function renderCatalogo(){
       <div class="cat-section">
         <div class="cat-title">${escapeHtml(cat)} <span class="count">${items.length}</span></div>
         <div class="product-grid">
-          ${items.map(productoCardHtml).join('')}
+          ${items.map(p => productoCardHtml(p, cat)).join('')}
         </div>
       </div>`;
   }).join('');
@@ -811,7 +842,7 @@ function dispChipHtml(p){
     : `<span class="disp-chip disp-inmediato">✅ Hecho al momento</span>`;
 }
 
-function productoCardHtml(p){
+function productoCardHtml(p, cat){
   const precio = Number(p.precio) || 0;
   const dias = Number(p.diasImpresion) || 0;
   const fotoSrc = primeraFoto(p) || DEFAULT_PHOTO;
@@ -820,8 +851,8 @@ function productoCardHtml(p){
     <div class="product-card" onclick="abrirDetalleProducto('${p.id}')">
       ${editorUnlocked ? `
         <div class="product-edit-actions">
-          <button class="mini-btn mini-btn-sm" onclick="event.stopPropagation(); moverProductoOrden('${p.id}', -1)" title="Mover antes">↑</button>
-          <button class="mini-btn mini-btn-sm" onclick="event.stopPropagation(); moverProductoOrden('${p.id}', 1)" title="Mover después">↓</button>
+          <button class="mini-btn mini-btn-sm" onclick="event.stopPropagation(); moverProductoOrden('${p.id}', '${escapeAttr(cat)}', -1)" title="Mover antes">↑</button>
+          <button class="mini-btn mini-btn-sm" onclick="event.stopPropagation(); moverProductoOrden('${p.id}', '${escapeAttr(cat)}', 1)" title="Mover después">↓</button>
           <button class="mini-btn" onclick="event.stopPropagation(); abrirProductoForm('${p.id}')" title="Editar">✎</button>
         </div>` : ''}
       <div class="product-photo">${foto}</div>
@@ -834,16 +865,17 @@ function productoCardHtml(p){
     </div>`;
 }
 
-window.moverProductoOrden = async function(id, delta){
+window.moverProductoOrden = async function(id, cat, delta){
   const p = productos.find(x=>x.id===id);
   if(!p) return;
-  const cat = (p.categoria||'').trim() || 'Sin categoría';
-  const mismos = productos.filter(x => ((x.categoria||'').trim() || 'Sin categoría') === cat)
-    .sort((a,b)=>{
-      const oa = a.orden ?? Infinity, ob = b.orden ?? Infinity;
-      if(oa !== ob) return oa - ob;
-      return (a.nombre||'').localeCompare(b.nombre||'', 'es');
-    });
+  const mismos = productos.filter(x => {
+    const cats = categoriasDe(x);
+    return (cats.length ? cats : ['Sin categoría']).includes(cat);
+  }).sort((a,b)=>{
+    const oa = a.orden ?? Infinity, ob = b.orden ?? Infinity;
+    if(oa !== ob) return oa - ob;
+    return (a.nombre||'').localeCompare(b.nombre||'', 'es');
+  });
   const idx = mismos.findIndex(x=>x.id===id);
   const j = idx + delta;
   if(j < 0 || j >= mismos.length) return;
@@ -851,6 +883,9 @@ window.moverProductoOrden = async function(id, delta){
   // Asigna orden secuencial (0,1,2...) a toda la categoría y después
   // intercambia las dos posiciones tocadas, para dejar un orden bien
   // definido de ahí en más (antes de esto, "orden" podía no existir).
+  // Nota: "orden" es un único número por producto (no uno por categoría),
+  // así que si un producto vive en más de una categoría, reordenarlo en
+  // una sección puede correrle la posición en la otra también.
   const nuevos = mismos.map((x,i)=>({ id: x.id, orden: i }));
   [nuevos[idx].orden, nuevos[j].orden] = [nuevos[j].orden, nuevos[idx].orden];
 
@@ -985,7 +1020,7 @@ window.abrirDetalleProducto = function(id){
     dotsEl.innerHTML = '';
   }
 
-  document.getElementById('detalleCat').textContent = p.categoria || '';
+  document.getElementById('detalleCat').textContent = categoriasDe(p).join(' · ');
   document.getElementById('detalleNombre').textContent = p.nombre || '';
   const precio = Number(p.precio) || 0;
   document.getElementById('detallePrecio').textContent = '$' + precio.toLocaleString('es-AR');
@@ -1068,6 +1103,35 @@ function actualizarUIModo(){
   document.getElementById('footerUnlocked').style.display = editorUnlocked ? '' : 'none';
 }
 
+/* ---------- Formulario de producto: categorías múltiples ---------- */
+let categoriasEdit = [];
+
+function renderCategoriasEdit(){
+  const cont = document.getElementById('categoriasChipsEdit');
+  if(!categoriasEdit.length){
+    cont.innerHTML = '<span style="font-size:11px;color:var(--ink-dim);">Sin categorías todavía (va a listarse en "Sin categoría").</span>';
+    return;
+  }
+  cont.innerHTML = categoriasEdit.map((c, i) => `
+    <span class="categoria-chip-edit">${escapeHtml(c)}<button type="button" onclick="quitarCategoriaEdit(${i})" title="Quitar">✕</button></span>
+  `).join('');
+}
+window.quitarCategoriaEdit = function(i){
+  categoriasEdit.splice(i, 1);
+  renderCategoriasEdit();
+};
+window.agregarCategoriaEdit = function(){
+  const input = document.getElementById('pCategoriaInput');
+  const val = input.value.trim();
+  if(!val) return;
+  if(!categoriasEdit.some(c => c.toLowerCase() === val.toLowerCase())){
+    categoriasEdit.push(val);
+  }
+  input.value = '';
+  renderCategoriasEdit();
+  input.focus();
+};
+
 /* ---------- Formulario de producto: galería de fotos ---------- */
 let fotosEdit = [];
 
@@ -1113,7 +1177,9 @@ window.abrirProductoForm = function(id){
   document.getElementById('productoError').textContent = '';
   const p = id ? productos.find(x => x.id === id) : null;
   document.getElementById('pNombre').value = p?.nombre || '';
-  document.getElementById('pCategoria').value = p?.categoria || '';
+  document.getElementById('pCategoriaInput').value = '';
+  categoriasEdit = p ? categoriasDe(p).slice() : [];
+  renderCategoriasEdit();
   document.getElementById('pPrecio').value = p?.precio ?? '';
   document.getElementById('pDias').value = p?.diasImpresion ?? '';
   document.getElementById('pDisponibilidad').value = p?.disponibilidad || 'inmediato';
@@ -1128,10 +1194,16 @@ window.abrirProductoForm = function(id){
 window.guardarProducto = async function(){
   const nombre = document.getElementById('pNombre').value.trim();
   if(!nombre){ document.getElementById('productoError').textContent = 'Ponele un nombre al producto.'; return; }
+  // Por si quedó algo tipeado sin tocar "Agregar"/Enter, lo suma también.
+  const pendiente = document.getElementById('pCategoriaInput').value.trim();
+  if(pendiente && !categoriasEdit.some(c => c.toLowerCase() === pendiente.toLowerCase())){
+    categoriasEdit.push(pendiente);
+  }
   const id = document.getElementById('productoId').value || uid();
   const data = {
     nombre,
-    categoria: document.getElementById('pCategoria').value.trim(),
+    categorias: categoriasEdit.slice(),
+    categoria: categoriasEdit[0] || '', // compatibilidad: código viejo que todavía lea "categoria" única
     precio: Number(document.getElementById('pPrecio').value) || 0,
     diasImpresion: Number(document.getElementById('pDias').value) || 0,
     disponibilidad: document.getElementById('pDisponibilidad').value,

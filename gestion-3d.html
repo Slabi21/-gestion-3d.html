@@ -1363,6 +1363,13 @@ function escapeAttr(str){ return (str||'').replace(/"/g,'&quot;'); }
 
 /* ---------- Elegir producto del catálogo ---------- */
 let catalogoProductosCache = null;
+// Igual que en catalogo-3d.html: compatibilidad con productos viejos que
+// solo tenían "categoria" (string única) en vez de "categorias" (array).
+function categoriasDe(p){
+  if(Array.isArray(p.categorias) && p.categorias.length) return p.categorias;
+  if(p.categoria && p.categoria.trim()) return [p.categoria.trim()];
+  return [];
+}
 async function abrirCatalogoPicker(){
   document.getElementById('catalogoPickBuscador').value = '';
   document.getElementById('catalogoPickList').innerHTML = 'Cargando catálogo...';
@@ -1388,17 +1395,22 @@ function renderCatalogoPicker(){
   let lista = catalogoProductosCache;
   if(q){
     lista = lista.filter(p =>
-      (p.nombre||'').toLowerCase().includes(q) || (p.categoria||'').toLowerCase().includes(q)
+      (p.nombre||'').toLowerCase().includes(q) || categoriasDe(p).join(' ').toLowerCase().includes(q)
     );
   }
   if(lista.length === 0){
     cont.innerHTML = 'No hay productos que coincidan con la búsqueda.';
     return;
   }
+  // Un producto con varias categorías aparece repetido en cada una, igual
+  // que en el catálogo (catalogo-3d.html).
   const grupos = {};
   lista.forEach(p => {
-    const cat = (p.categoria||'').trim() || 'Sin categoría';
-    (grupos[cat] = grupos[cat] || []).push(p);
+    const cats = categoriasDe(p);
+    const catList = cats.length ? cats : ['Sin categoría'];
+    catList.forEach(cat => {
+      (grupos[cat] = grupos[cat] || []).push(p);
+    });
   });
   const nombresCats = Object.keys(grupos).sort((a,b)=>{
     if(a === 'Sin categoría') return 1;
