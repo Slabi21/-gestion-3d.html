@@ -174,7 +174,7 @@
 
 <footer class="editor-footer">
   <span id="footerLocked">Catálogo · <button onclick="abrirClaveEditor()">modo edición</button></span>
-  <span id="footerUnlocked" style="display:none;">Modo edición activo · <button onclick="bloquearEditor()">bloquear este dispositivo</button></span>
+  <span id="footerUnlocked" style="display:none;">Modo edición activo · <button onclick="abrirConfigGithub()">subida de fotos</button> · <button onclick="bloquearEditor()">bloquear este dispositivo</button></span>
 </footer>
 
 <!-- Sheet: clave de edición -->
@@ -220,11 +220,14 @@
       </div>
     </div>
     <div class="field">
-      <label>Foto (URL)</label>
-      <input id="pFoto" placeholder="https://..." oninput="actualizarPreviewFoto()">
-      <div class="field-hint">
-        Subí la imagen a la carpeta <code>img/</code> del mismo repositorio de GitHub y pegá acá la URL
-        (ej: <code>https://slabi21.github.io/-gestion-3d.html/img/maceta.jpg</code>). Podés dejarlo vacío si todavía no tenés foto.
+      <label>Foto</label>
+      <label class="btn btn-secondary" id="btnSubirFotoLabel" style="display:flex;align-items:center;justify-content:center;gap:6px;cursor:pointer;margin-bottom:8px;">
+        📤 Subir foto desde el dispositivo
+        <input type="file" id="pFotoArchivo" accept="image/*" style="display:none;" onchange="onArchivoFotoElegido(event)">
+      </label>
+      <input id="pFoto" placeholder="...o pegá una URL directamente" oninput="actualizarPreviewFoto()">
+      <div class="field-hint" id="pFotoHint">
+        Podés dejarlo vacío si todavía no tenés foto. El botón sube la imagen sola a la carpeta <code>img/</code> del repositorio (necesita el token configurado en Modo edición → subida de fotos).
       </div>
       <div class="foto-preview" id="fotoPreview"><span class="ph">Sin foto</span></div>
     </div>
@@ -235,6 +238,30 @@
       <button class="btn btn-secondary" onclick="closeSheet('sheetProducto')">Cancelar</button>
     </div>
     <div class="sync-note" id="syncNote"></div>
+  </div>
+</div>
+
+<!-- Sheet: configuración de subida de fotos (token GitHub) -->
+<div class="sheet-backdrop" id="sheetGithub">
+  <div class="sheet">
+    <div class="sheet-handle"></div>
+    <h3>Subida de fotos</h3>
+    <p style="font-size:12.5px;color:var(--ink-dim);margin:-8px 0 16px;line-height:1.5;">
+      Con esto podés subir la foto directo desde el celular al repositorio, sin usar la web de GitHub.
+      El token queda guardado solo en este dispositivo.
+    </p>
+    <div class="field">
+      <label>Token de GitHub</label>
+      <input id="ghTokenInput" type="password" placeholder="github_pat_...">
+      <div class="field-hint">Fine-grained, limitado al repo, con permiso "Contents: Read and write".</div>
+    </div>
+    <div class="form-error" id="ghTokenError"></div>
+    <p id="ghTokenStatus" style="font-size:12.5px;color:var(--ink-dim);margin:0 0 4px;"></p>
+    <div class="btn-row">
+      <button class="btn btn-primary" onclick="guardarTokenGithub()">Guardar y probar</button>
+      <button class="btn btn-danger" id="btnQuitarToken" style="display:none;" onclick="quitarTokenGithub()">Quitar token de este dispositivo</button>
+      <button class="btn btn-secondary" onclick="closeSheet('sheetGithub')">Cerrar</button>
+    </div>
   </div>
 </div>
 
@@ -261,6 +288,150 @@ const FIREBASE_CONFIG = {
 
 const EDITOR_PASSWORD = 'Prisma21';
 const STORAGE_PREFIX = 'catalogo3d_';
+
+/* ---------- Subida de fotos a GitHub ---------- */
+const GH_REPO = 'Slabi21/-gestion-3d.html';
+const GH_BRANCH = 'main';
+const GH_TOKEN_KEY = STORAGE_PREFIX + 'ghToken';
+
+function ghToken(){ return localStorage.getItem(GH_TOKEN_KEY) || ''; }
+
+window.abrirConfigGithub = function(){
+  document.getElementById('ghTokenInput').value = '';
+  document.getElementById('ghTokenError').textContent = '';
+  const tieneToken = !!ghToken();
+  document.getElementById('ghTokenStatus').textContent = tieneToken
+    ? 'Ya hay un token guardado en este dispositivo. Pegá uno nuevo solo si querés reemplazarlo.'
+    : 'Todavía no configuraste ningún token en este dispositivo.';
+  document.getElementById('btnQuitarToken').style.display = tieneToken ? '' : 'none';
+  openSheet('sheetGithub');
+};
+
+window.quitarTokenGithub = function(){
+  if(!confirm('¿Quitar el token de este dispositivo? Vas a tener que volver a pegarlo para subir fotos.')) return;
+  localStorage.removeItem(GH_TOKEN_KEY);
+  closeSheet('sheetGithub');
+};
+
+window.guardarTokenGithub = async function(){
+  const val = document.getElementById('ghTokenInput').value.trim();
+  const errEl = document.getElementById('ghTokenError');
+  const statusEl = document.getElementById('ghTokenStatus');
+  errEl.textContent = '';
+  if(!val){ errEl.textContent = 'Pegá el token antes de guardar.'; return; }
+  statusEl.textContent = 'Probando conexión con el repositorio...';
+  try{
+    const resp = await fetch(`https://api.github.com/repos/${GH_REPO}`, {
+      headers: { 'Authorization': 'Bearer ' + val, 'Accept': 'application/vnd.github+json' }
+    });
+    if(resp.status === 401 || resp.status === 403){
+      errEl.textContent = 'El token no es válido o no tiene permiso sobre este repositorio.';
+      statusEl.textContent = '';
+      return;
+    }
+    if(!resp.ok){
+      errEl.textContent = 'No se pudo verificar el token (revisá tu conexión).';
+      statusEl.textContent = '';
+      return;
+    }
+    localStorage.setItem(GH_TOKEN_KEY, val);
+    statusEl.textContent = '✅ Token guardado y verificado en este dispositivo.';
+    document.getElementById('btnQuitarToken').style.display = '';
+  }catch(e){
+    console.warn(e);
+    errEl.textContent = 'No se pudo verificar el token (revisá tu conexión).';
+    statusEl.textContent = '';
+  }
+};
+
+function fileABase64(file){
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result).split(',')[1]);
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+function nombreArchivoSeguro(nombreProducto, extension){
+  const base = (nombreProducto || 'producto')
+    .toLowerCase()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/(^-+|-+$)/g, '') || 'producto';
+  return `${base}-${Date.now().toString(36)}.${extension}`;
+}
+
+async function subirFotoAGithub(file){
+  const token = ghToken();
+  if(!token){
+    throw new Error('SIN_TOKEN');
+  }
+  const ext = (file.name.split('.').pop() || 'jpg').toLowerCase().replace(/[^a-z0-9]/g, '') || 'jpg';
+  const nombreProducto = document.getElementById('pNombre').value;
+  const filename = nombreArchivoSeguro(nombreProducto, ext);
+  const path = `img/${filename}`;
+  const contentBase64 = await fileABase64(file);
+
+  const resp = await fetch(`https://api.github.com/repos/${GH_REPO}/contents/${path}`, {
+    method: 'PUT',
+    headers: {
+      'Authorization': 'Bearer ' + token,
+      'Accept': 'application/vnd.github+json'
+    },
+    body: JSON.stringify({
+      message: `Subir foto: ${filename}`,
+      content: contentBase64,
+      branch: GH_BRANCH
+    })
+  });
+
+  if(!resp.ok){
+    if(resp.status === 401 || resp.status === 403) throw new Error('TOKEN_INVALIDO');
+    throw new Error('ERROR_SUBIDA');
+  }
+  const data = await resp.json();
+  return data.content && data.content.download_url;
+}
+
+window.onArchivoFotoElegido = async function(event){
+  const file = event.target.files[0];
+  if(!file) return;
+  const hint = document.getElementById('pFotoHint');
+  const errEl = document.getElementById('productoError');
+  const hintOriginal = hint.textContent;
+  errEl.textContent = '';
+
+  if(!ghToken()){
+    errEl.textContent = 'Primero configurá el token de GitHub (Modo edición → subida de fotos).';
+    event.target.value = '';
+    return;
+  }
+
+  hint.textContent = 'Subiendo foto al repositorio...';
+  try{
+    const url = await subirFotoAGithub(file);
+    if(url){
+      document.getElementById('pFoto').value = url;
+      actualizarPreviewFoto();
+      hint.textContent = '✅ Foto subida. La URL ya quedó completada arriba.';
+    }else{
+      hint.textContent = hintOriginal;
+      errEl.textContent = 'La foto se subió pero no se pudo leer la URL. Revisá el repositorio.';
+    }
+  }catch(e){
+    hint.textContent = hintOriginal;
+    if(e.message === 'SIN_TOKEN'){
+      errEl.textContent = 'Primero configurá el token de GitHub (Modo edición → subida de fotos).';
+    }else if(e.message === 'TOKEN_INVALIDO'){
+      errEl.textContent = 'El token no es válido o no tiene permiso. Configuralo de nuevo.';
+    }else{
+      errEl.textContent = 'No se pudo subir la foto. Revisá tu conexión e intentá de nuevo.';
+    }
+    console.warn(e);
+  }
+  event.target.value = '';
+};
 
 let fbApp=null, fbAuth=null, fbDb=null, fbSdk=null;
 let productos = [];
