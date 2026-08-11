@@ -1,0 +1,492 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Catálogo — Taller 3D</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxOTIgMTkyIj4KPHJlY3Qgd2lkdGg9IjE5MiIgaGVpZ2h0PSIxOTIiIHJ4PSI0MCIgZmlsbD0iIzFiMWQyMSIvPgo8ZyBzdHJva2U9IiNmZjdhMjkiIHN0cm9rZS13aWR0aD0iNyIgZmlsbD0ibm9uZSI+CjxlbGxpcHNlIGN4PSI5NiIgY3k9IjY0IiByeD0iNDgiIHJ5PSIxNyIvPgo8ZWxsaXBzZSBjeD0iOTYiIGN5PSI4OCIgcng9IjQ4IiByeT0iMTciLz4KPGVsbGlwc2UgY3g9Ijk2IiBjeT0iMTEyIiByeD0iNDgiIHJ5PSIxNyIvPgo8L2c+Cjx0ZXh0IHg9Ijk2IiB5PSIxNjAiIGZvbnQtZmFtaWx5PSJtb25vc3BhY2Usc2Fucy1zZXJpZiIgZm9udC1zaXplPSIzNiIgZm9udC13ZWlnaHQ9IjcwMCIgZmlsbD0iI2VlZjBmMiIgdGV4dC1hbmNob3I9Im1pZGRsZSI+M0Q8L3RleHQ+Cjwvc3ZnPg==">
+<meta name="theme-color" content="#1b1d21">
+<style>
+  :root{
+    --bg: #1b1d21;
+    --surface: #24272c;
+    --surface-2: #2c3037;
+    --ink: #eef0f2;
+    --ink-dim: #9aa0a8;
+    --border: rgba(255,255,255,.08);
+    --accent: #ff7a29;
+    --accent-ink: #1b1d21;
+  }
+  *{ box-sizing:border-box; }
+  body{
+    margin:0; background: var(--bg); color: var(--ink);
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    -webkit-tap-highlight-color: transparent;
+    padding-bottom: 90px;
+  }
+  .mono{ font-family:'JetBrains Mono','SF Mono',Consolas,monospace; }
+  a{ color:inherit; }
+
+  .topbar{
+    position: sticky; top:0; z-index:20;
+    background: linear-gradient(180deg, var(--surface) 0%, var(--bg) 100%);
+    border-bottom: 1px solid var(--border);
+    padding: 18px 16px 14px;
+  }
+  .topbar-row{ display:flex; align-items:center; justify-content:space-between; gap:10px; }
+  .topbar h1{
+    margin:0; font-size:19px; font-weight:700; letter-spacing:.2px;
+    display:flex; align-items:center; gap:8px;
+  }
+  .topbar h1 .dot{ width:8px; height:8px; border-radius:50%; background: var(--accent); }
+  .topbar .sub{ color: var(--ink-dim); font-size:12.5px; margin-top:3px; }
+  .lock-btn{
+    background: var(--surface-2); border: 1px solid var(--border); color: var(--ink-dim);
+    width:38px; height:38px; border-radius:12px; display:flex; align-items:center; justify-content:center;
+    cursor:pointer; flex:none; font-size:16px;
+  }
+  .lock-btn.unlocked{ color: var(--accent); border-color: rgba(255,122,41,.35); }
+
+  .search-wrap{ margin-top:12px; }
+  .search-wrap input{
+    width:100%; background: var(--surface-2); border:1px solid var(--border); border-radius:12px;
+    padding:10px 12px; color: var(--ink); font-family:inherit; font-size:14px;
+  }
+  .search-wrap input::placeholder{ color: var(--ink-dim); }
+
+  .container{ max-width: 980px; margin: 0 auto; padding: 16px; }
+
+  .cat-section{ margin-bottom: 26px; }
+  .cat-title{
+    font-size:13px; font-weight:700; text-transform:uppercase; letter-spacing:.6px;
+    color: var(--accent); margin: 0 0 10px 2px;
+    display:flex; align-items:center; gap:8px;
+  }
+  .cat-title .count{ color: var(--ink-dim); font-weight:500; text-transform:none; letter-spacing:0; font-family:'JetBrains Mono',monospace; font-size:12px; }
+
+  .product-grid{
+    display:grid; grid-template-columns: repeat(auto-fill, minmax(148px, 1fr)); gap:12px;
+  }
+  .product-card{
+    background: var(--surface); border:1px solid var(--border); border-radius:16px; overflow:hidden;
+    display:flex; flex-direction:column; position:relative;
+  }
+  .product-photo{
+    width:100%; aspect-ratio:1/1; background: var(--surface-2);
+    display:flex; align-items:center; justify-content:center; overflow:hidden;
+  }
+  .product-photo img{ width:100%; height:100%; object-fit:cover; display:block; }
+  .product-photo .placeholder{ color: var(--ink-dim); font-size:11px; text-align:center; padding:8px; }
+  .product-info{ padding:10px 11px 12px; display:flex; flex-direction:column; gap:4px; }
+  .product-name{ font-size:13.5px; font-weight:600; line-height:1.25; }
+  .product-price{ font-family:'JetBrains Mono',monospace; font-weight:700; color: var(--accent); font-size:14px; }
+  .product-days{ font-size:11px; color: var(--ink-dim); font-family:'JetBrains Mono',monospace; }
+
+  .product-edit-actions{
+    position:absolute; top:8px; right:8px; display:flex; gap:6px;
+  }
+  .mini-btn{
+    width:28px; height:28px; border-radius:9px; border:1px solid var(--border);
+    background: rgba(27,29,33,.78); backdrop-filter: blur(2px);
+    color: var(--ink); display:flex; align-items:center; justify-content:center; font-size:13px; cursor:pointer;
+  }
+
+  .empty-state{
+    text-align:center; color: var(--ink-dim); padding: 60px 20px 30px; font-size:14px; line-height:1.6;
+  }
+  .empty-state .big{ font-size:34px; margin-bottom:10px; }
+
+  .fab{
+    position:fixed; right:18px; bottom:22px; z-index:25;
+    width:56px; height:56px; border-radius:18px; background: var(--accent); color: var(--accent-ink);
+    border:none; font-size:26px; font-weight:700; display:flex; align-items:center; justify-content:center;
+    box-shadow: 0 10px 24px rgba(255,122,41,.35); cursor:pointer;
+  }
+
+  footer.editor-footer{
+    text-align:center; padding: 24px 16px 8px; color: var(--ink-dim); font-size:11.5px;
+  }
+  footer.editor-footer button{
+    background:none; border:none; color: var(--ink-dim); text-decoration:underline; font-size:11.5px; cursor:pointer; font-family:inherit;
+  }
+
+  /* ---------- Bottom sheets ---------- */
+  .sheet-backdrop{
+    display:none; position:fixed; inset:0; background: rgba(0,0,0,.55); z-index:50;
+    align-items:flex-end; justify-content:center;
+  }
+  .sheet-backdrop.active{ display:flex; }
+  .sheet{
+    background: var(--surface); width:100%; max-width:520px; border-radius:20px 20px 0 0;
+    padding: 10px 18px 24px; max-height:88vh; overflow-y:auto;
+  }
+  .sheet-handle{ width:38px; height:4px; background: var(--border); border-radius:3px; margin: 6px auto 14px; }
+  .sheet h3{ margin: 0 0 16px; font-size:17px; }
+  .field{ margin-bottom:14px; }
+  .field label{ display:block; font-size:12px; color: var(--ink-dim); margin-bottom:5px; }
+  .field input, .field textarea{
+    width:100%; background: var(--surface-2); border:1px solid var(--border); border-radius:11px;
+    padding:10px 12px; color: var(--ink); font-family:inherit; font-size:14.5px;
+  }
+  .field-row{ display:flex; gap:10px; }
+  .field-row .field{ flex:1; }
+  .field-hint{ font-size:11px; color: var(--ink-dim); margin-top:5px; line-height:1.5; }
+  .foto-preview{
+    margin-top:8px; width:84px; height:84px; border-radius:12px; overflow:hidden; background: var(--surface-2);
+    display:flex; align-items:center; justify-content:center; border:1px solid var(--border);
+  }
+  .foto-preview img{ width:100%; height:100%; object-fit:cover; }
+  .foto-preview .ph{ color: var(--ink-dim); font-size:10px; text-align:center; }
+
+  .btn{
+    width:100%; padding:13px; border-radius:12px; border:none; font-family:inherit; font-size:14.5px;
+    font-weight:600; cursor:pointer;
+  }
+  .btn-primary{ background: var(--accent); color: var(--accent-ink); }
+  .btn-secondary{ background: var(--surface-2); color: var(--ink); border:1px solid var(--border); }
+  .btn-danger{ background: rgba(248,113,113,.12); color:#f87171; border:1px solid rgba(248,113,113,.3); }
+  .btn-row{ display:flex; flex-direction:column; gap:10px; margin-top:6px; }
+  .form-error{ color:#f87171; font-size:12.5px; margin: -6px 0 12px; min-height:14px; }
+
+  .sync-note{ text-align:center; color: var(--ink-dim); font-size:11px; margin: 10px 0 0; font-family:'JetBrains Mono',monospace; }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="topbar-row">
+    <div>
+      <h1><span class="dot"></span>Catálogo — Taller 3D</h1>
+      <div class="sub" id="subtitulo">Productos y precios</div>
+    </div>
+    <button class="lock-btn" id="lockBtn" onclick="onLockBtnClick()">🔒</button>
+  </div>
+  <div class="search-wrap">
+    <input id="buscador" placeholder="Buscar producto..." oninput="renderCatalogo()">
+  </div>
+</div>
+
+<div class="container" id="contenido">
+  <div class="empty-state">Cargando catálogo...</div>
+</div>
+
+<button class="fab" id="fabAgregar" style="display:none;" onclick="abrirProductoForm()">＋</button>
+
+<footer class="editor-footer">
+  <span id="footerLocked">Catálogo · <button onclick="abrirClaveEditor()">modo edición</button></span>
+  <span id="footerUnlocked" style="display:none;">Modo edición activo · <button onclick="bloquearEditor()">bloquear este dispositivo</button></span>
+</footer>
+
+<!-- Sheet: clave de edición -->
+<div class="sheet-backdrop" id="sheetClave">
+  <div class="sheet">
+    <div class="sheet-handle"></div>
+    <h3>Modo edición</h3>
+    <div class="field">
+      <label>Clave</label>
+      <input id="claveInput" type="password" placeholder="Clave de acceso" onkeydown="if(event.key==='Enter') verificarClaveEditor()">
+    </div>
+    <div class="form-error" id="claveError"></div>
+    <div class="btn-row">
+      <button class="btn btn-primary" onclick="verificarClaveEditor()">Ingresar</button>
+      <button class="btn btn-secondary" onclick="closeSheet('sheetClave')">Cancelar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Sheet: producto -->
+<div class="sheet-backdrop" id="sheetProducto">
+  <div class="sheet">
+    <div class="sheet-handle"></div>
+    <h3 id="productoSheetTitle">Nuevo producto</h3>
+    <input type="hidden" id="productoId">
+    <div class="field">
+      <label>Nombre</label>
+      <input id="pNombre" placeholder="Ej: Maceta hexagonal">
+    </div>
+    <div class="field">
+      <label>Categoría</label>
+      <input id="pCategoria" placeholder="Ej: Decoración" list="categoriasList">
+      <datalist id="categoriasList"></datalist>
+    </div>
+    <div class="field-row">
+      <div class="field">
+        <label>Precio</label>
+        <input id="pPrecio" type="number" min="0" inputmode="decimal" placeholder="0">
+      </div>
+      <div class="field">
+        <label>Días de impresión</label>
+        <input id="pDias" type="number" min="0" inputmode="decimal" placeholder="0">
+      </div>
+    </div>
+    <div class="field">
+      <label>Foto (URL)</label>
+      <input id="pFoto" placeholder="https://..." oninput="actualizarPreviewFoto()">
+      <div class="field-hint">
+        Subí la imagen a la carpeta <code>img/</code> del mismo repositorio de GitHub y pegá acá la URL
+        (ej: <code>https://slabi21.github.io/-gestion-3d.html/img/maceta.jpg</code>). Podés dejarlo vacío si todavía no tenés foto.
+      </div>
+      <div class="foto-preview" id="fotoPreview"><span class="ph">Sin foto</span></div>
+    </div>
+    <div class="form-error" id="productoError"></div>
+    <div class="btn-row">
+      <button class="btn btn-primary" onclick="guardarProducto()">Guardar</button>
+      <button class="btn btn-danger" id="btnEliminarProducto" style="display:none;" onclick="eliminarProducto()">Eliminar producto</button>
+      <button class="btn btn-secondary" onclick="closeSheet('sheetProducto')">Cancelar</button>
+    </div>
+    <div class="sync-note" id="syncNote"></div>
+  </div>
+</div>
+
+<script type="module">
+/* =========================================================
+   Catálogo de productos — Taller 3D
+   ---------------------------------------------------------
+   Archivo independiente de gestion-3d.html, mismo backend
+   de Firebase (proyecto agenda-clientes-3s), colección nueva
+   "productos". Lectura pública en tiempo real (onSnapshot);
+   edición protegida con clave, guardada de forma permanente
+   en este dispositivo (mismo patrón que "modo casa matriz"
+   en gestion-3d.html).
+   ========================================================= */
+
+const FIREBASE_CONFIG = {
+  apiKey: 'AIzaSyCkVbv5ruaPfXvEmrY9oQt4CVMlJ73kEHM',
+  authDomain: 'agenda-clientes-3s.firebaseapp.com',
+  projectId: 'agenda-clientes-3s',
+  storageBucket: 'agenda-clientes-3s.firebasestorage.app',
+  messagingSenderId: '308893437770',
+  appId: '1:308893437770:web:b207bc9a5a96a1de837bb3'
+};
+
+const EDITOR_PASSWORD = 'Prisma21';
+const STORAGE_PREFIX = 'catalogo3d_';
+
+let fbApp=null, fbAuth=null, fbDb=null, fbSdk=null;
+let productos = [];
+let editorUnlocked = localStorage.getItem(STORAGE_PREFIX + 'editorUnlocked') === 'true';
+let primerSnapshotLlegado = false;
+
+function uid(){ return Date.now().toString(36) + Math.random().toString(36).slice(2,7); }
+function escapeHtml(str){
+  return (str||'').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+function escapeAttr(str){ return (str||'').replace(/"/g,'&quot;'); }
+window.openSheet = id => document.getElementById(id).classList.add('active');
+window.closeSheet = id => document.getElementById(id).classList.remove('active');
+
+/* ---------- Firebase ---------- */
+async function cargarFirebase(){
+  if(fbDb) return;
+  const [{ initializeApp }, authMod, fsMod] = await Promise.all([
+    import('https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js'),
+    import('https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js'),
+    import('https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js'),
+  ]);
+  fbSdk = { ...authMod, ...fsMod };
+  fbApp = initializeApp(FIREBASE_CONFIG);
+  fbAuth = fbSdk.getAuth(fbApp);
+  fbDb = fbSdk.getFirestore(fbApp);
+  await fbSdk.signInAnonymously(fbAuth);
+  escucharProductos();
+}
+function escucharProductos(){
+  const ref = fbSdk.collection(fbDb, 'productos');
+  fbSdk.onSnapshot(ref, snap => {
+    productos = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    primerSnapshotLlegado = true;
+    actualizarDatalistCategorias();
+    renderCatalogo();
+    document.getElementById('syncNote').textContent = 'Sincronizado · ' + new Date().toLocaleTimeString('es-AR', {hour:'2-digit', minute:'2-digit'});
+  }, err => {
+    console.warn('Error escuchando catálogo', err);
+    document.getElementById('contenido').innerHTML = '<div class="empty-state">No se pudo conectar con el catálogo. Revisá tu conexión.</div>';
+  });
+}
+
+/* ---------- Render ---------- */
+function actualizarDatalistCategorias(){
+  const cats = [...new Set(productos.map(p => (p.categoria||'').trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'es'));
+  document.getElementById('categoriasList').innerHTML = cats.map(c => `<option value="${escapeAttr(c)}">`).join('');
+}
+
+function renderCatalogo(){
+  const cont = document.getElementById('contenido');
+  const q = (document.getElementById('buscador').value || '').toLowerCase().trim();
+
+  let lista = productos;
+  if(q){
+    lista = lista.filter(p =>
+      (p.nombre||'').toLowerCase().includes(q) || (p.categoria||'').toLowerCase().includes(q)
+    );
+  }
+
+  document.getElementById('subtitulo').textContent = productos.length
+    ? `${productos.length} producto${productos.length===1?'':'s'} en el catálogo`
+    : 'Productos y precios';
+
+  if(!primerSnapshotLlegado){
+    cont.innerHTML = '<div class="empty-state">Cargando catálogo...</div>';
+    return;
+  }
+  if(productos.length === 0){
+    cont.innerHTML = `<div class="empty-state"><div class="big">🗂️</div>Todavía no hay productos cargados.${editorUnlocked ? '<br>Tocá el botón ＋ para agregar el primero.' : ''}</div>`;
+    return;
+  }
+  if(lista.length === 0){
+    cont.innerHTML = '<div class="empty-state">No hay productos que coincidan con la búsqueda.</div>';
+    return;
+  }
+
+  const grupos = {};
+  lista.forEach(p => {
+    const cat = (p.categoria||'').trim() || 'Sin categoría';
+    (grupos[cat] = grupos[cat] || []).push(p);
+  });
+  const nombresCats = Object.keys(grupos).sort((a,b)=>{
+    if(a === 'Sin categoría') return 1;
+    if(b === 'Sin categoría') return -1;
+    return a.localeCompare(b, 'es');
+  });
+
+  cont.innerHTML = nombresCats.map(cat => {
+    const items = grupos[cat].sort((a,b)=> (a.nombre||'').localeCompare(b.nombre||'', 'es'));
+    return `
+      <div class="cat-section">
+        <div class="cat-title">${escapeHtml(cat)} <span class="count">${items.length}</span></div>
+        <div class="product-grid">
+          ${items.map(productoCardHtml).join('')}
+        </div>
+      </div>`;
+  }).join('');
+}
+
+function productoCardHtml(p){
+  const precio = Number(p.precio) || 0;
+  const dias = Number(p.diasImpresion) || 0;
+  const foto = p.fotoUrl
+    ? `<img src="${escapeAttr(p.fotoUrl)}" alt="${escapeAttr(p.nombre)}" onerror="this.parentElement.innerHTML='<span class=&quot;placeholder&quot;>Sin foto</span>'">`
+    : `<span class="placeholder">Sin foto</span>`;
+  return `
+    <div class="product-card">
+      ${editorUnlocked ? `
+        <div class="product-edit-actions">
+          <button class="mini-btn" onclick="abrirProductoForm('${p.id}')" title="Editar">✎</button>
+        </div>` : ''}
+      <div class="product-photo">${foto}</div>
+      <div class="product-info">
+        <div class="product-name">${escapeHtml(p.nombre)}</div>
+        <div class="product-price mono">$${precio.toLocaleString('es-AR')}</div>
+        ${dias > 0 ? `<div class="product-days">≈ ${dias} día${dias===1?'':'s'} de impresión</div>` : ''}
+      </div>
+    </div>`;
+}
+
+/* ---------- Clave / modo edición ---------- */
+window.onLockBtnClick = function(){
+  if(editorUnlocked){
+    document.getElementById('contenido').scrollIntoView({behavior:'smooth'});
+  }else{
+    abrirClaveEditor();
+  }
+};
+window.abrirClaveEditor = function(){
+  document.getElementById('claveInput').value = '';
+  document.getElementById('claveError').textContent = '';
+  openSheet('sheetClave');
+};
+window.verificarClaveEditor = function(){
+  const val = document.getElementById('claveInput').value;
+  if(val === EDITOR_PASSWORD){
+    editorUnlocked = true;
+    localStorage.setItem(STORAGE_PREFIX + 'editorUnlocked', 'true');
+    closeSheet('sheetClave');
+    actualizarUIModo();
+    renderCatalogo();
+  }else{
+    document.getElementById('claveError').textContent = 'Clave incorrecta.';
+  }
+};
+window.bloquearEditor = function(){
+  if(!confirm('¿Bloquear el modo edición en este dispositivo? Vas a tener que volver a ingresar la clave para editar de nuevo.')) return;
+  editorUnlocked = false;
+  localStorage.removeItem(STORAGE_PREFIX + 'editorUnlocked');
+  actualizarUIModo();
+  renderCatalogo();
+};
+function actualizarUIModo(){
+  document.getElementById('lockBtn').textContent = editorUnlocked ? '🔓' : '🔒';
+  document.getElementById('lockBtn').classList.toggle('unlocked', editorUnlocked);
+  document.getElementById('fabAgregar').style.display = editorUnlocked ? 'flex' : 'none';
+  document.getElementById('footerLocked').style.display = editorUnlocked ? 'none' : '';
+  document.getElementById('footerUnlocked').style.display = editorUnlocked ? '' : 'none';
+}
+
+/* ---------- Formulario de producto ---------- */
+window.actualizarPreviewFoto = function(){
+  const url = document.getElementById('pFoto').value.trim();
+  const prev = document.getElementById('fotoPreview');
+  if(!url){ prev.innerHTML = '<span class="ph">Sin foto</span>'; return; }
+  prev.innerHTML = `<img src="${escapeAttr(url)}" onerror="this.parentElement.innerHTML='<span class=&quot;ph&quot;>No carga</span>'">`;
+};
+
+window.abrirProductoForm = function(id){
+  document.getElementById('productoSheetTitle').textContent = id ? 'Editar producto' : 'Nuevo producto';
+  document.getElementById('productoId').value = id || '';
+  document.getElementById('productoError').textContent = '';
+  const p = id ? productos.find(x => x.id === id) : null;
+  document.getElementById('pNombre').value = p?.nombre || '';
+  document.getElementById('pCategoria').value = p?.categoria || '';
+  document.getElementById('pPrecio').value = p?.precio ?? '';
+  document.getElementById('pDias').value = p?.diasImpresion ?? '';
+  document.getElementById('pFoto').value = p?.fotoUrl || '';
+  actualizarPreviewFoto();
+  document.getElementById('btnEliminarProducto').style.display = id ? '' : 'none';
+  openSheet('sheetProducto');
+};
+
+window.guardarProducto = async function(){
+  const nombre = document.getElementById('pNombre').value.trim();
+  if(!nombre){ document.getElementById('productoError').textContent = 'Ponele un nombre al producto.'; return; }
+  const id = document.getElementById('productoId').value || uid();
+  const data = {
+    nombre,
+    categoria: document.getElementById('pCategoria').value.trim(),
+    precio: Number(document.getElementById('pPrecio').value) || 0,
+    diasImpresion: Number(document.getElementById('pDias').value) || 0,
+    fotoUrl: document.getElementById('pFoto').value.trim(),
+    updatedAt: Date.now(),
+  };
+  try{
+    await cargarFirebase();
+    const existente = productos.find(x => x.id === id);
+    if(!existente) data.createdAt = Date.now();
+    await fbSdk.setDoc(fbSdk.doc(fbDb, 'productos', id), data, { merge: true });
+    closeSheet('sheetProducto');
+  }catch(e){
+    console.warn(e);
+    document.getElementById('productoError').textContent = 'No se pudo guardar. Revisá tu conexión e intentá de nuevo.';
+  }
+};
+
+window.eliminarProducto = async function(){
+  const id = document.getElementById('productoId').value;
+  if(!id) return;
+  if(!confirm('¿Eliminar este producto del catálogo?')) return;
+  try{
+    await cargarFirebase();
+    await fbSdk.deleteDoc(fbSdk.doc(fbDb, 'productos', id));
+    closeSheet('sheetProducto');
+  }catch(e){
+    console.warn(e);
+    document.getElementById('productoError').textContent = 'No se pudo eliminar. Revisá tu conexión e intentá de nuevo.';
+  }
+};
+
+/* ---------- Inicio ---------- */
+actualizarUIModo();
+renderCatalogo();
+cargarFirebase();
+</script>
+</body>
+</html>
