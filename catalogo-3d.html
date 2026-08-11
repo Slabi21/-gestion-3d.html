@@ -47,6 +47,15 @@
   }
   .lock-btn.unlocked{ color: var(--accent); border-color: rgba(255,122,41,.35); }
 
+  .cat-filter-wrap{ display:flex; gap:6px; overflow-x:auto; margin-top:10px; padding-bottom:2px; scrollbar-width:none; }
+  .cat-filter-wrap::-webkit-scrollbar{ display:none; }
+  .cat-filter-chip{
+    flex-shrink:0; font-family:'JetBrains Mono', monospace; font-size:11.5px;
+    color: var(--ink-dim); background: var(--surface-2); border:1px solid var(--border);
+    border-radius:20px; padding:6px 12px; cursor:pointer; white-space:nowrap;
+  }
+  .cat-filter-chip.active{ color: var(--accent-ink); background: var(--accent); border-color: var(--accent); }
+
   .search-wrap{ margin-top:12px; }
   .search-wrap input{
     width:100%; background: var(--surface-2); border:1px solid var(--border); border-radius:12px;
@@ -163,6 +172,14 @@
     background: rgba(20,21,24,.85); color:#fff; border:none; font-size:10px; line-height:1;
     display:flex; align-items:center; justify-content:center; cursor:pointer;
   }
+  .foto-thumb-reorder{
+    position:absolute; top:2px; left:2px; display:flex; flex-direction:column; gap:2px;
+  }
+  .foto-thumb-reorder button{
+    width:16px; height:14px; border-radius:4px; border:none; background: rgba(20,21,24,.85);
+    color:#fff; font-size:9px; line-height:1; display:flex; align-items:center; justify-content:center; cursor:pointer; padding:0;
+  }
+  .foto-thumb-reorder button:disabled{ opacity:.3; cursor:default; }
   .foto-thumb-tag{
     position:absolute; bottom:0; left:0; right:0; background: rgba(255,122,41,.9); color: var(--accent-ink);
     font-size:8.5px; font-weight:700; text-align:center; padding:1.5px 0; text-transform:uppercase; letter-spacing:.03em;
@@ -208,6 +225,7 @@
   <div class="search-wrap">
     <input id="buscador" placeholder="Buscar producto..." oninput="renderCatalogo()">
   </div>
+  <div class="cat-filter-wrap" id="catFilterBar"></div>
 </div>
 
 <div class="container" id="contenido">
@@ -276,7 +294,7 @@
         <button type="button" class="btn btn-secondary" style="width:auto;padding:0 14px;flex:none;" onclick="agregarFotoUrlManual()">Agregar</button>
       </div>
       <div class="field-hint" id="pFotoHint">
-        Podés cargar varias fotos: la primera de la lista es la que se ve en la tarjeta del catálogo. Tocá la ✕ para sacar una.
+        Podés cargar varias fotos: la primera de la lista es la que se ve en la tarjeta del catálogo. Usá las flechas ▲▼ para reordenar y la ✕ para sacar una.
       </div>
       <div class="foto-galeria-edit" id="fotoGaleriaEdit"></div>
     </div>
@@ -330,7 +348,11 @@
       <div class="detalle-precio mono" id="detallePrecio"></div>
       <div class="detalle-dias" id="detalleDias"></div>
       <p class="detalle-desc" id="detalleDesc"></p>
-      <button class="btn btn-secondary" style="margin:16px 0 4px;" onclick="closeSheet('sheetDetalle')">Cerrar</button>
+      <div class="btn-row" style="margin-top:16px;">
+        <button class="btn btn-primary" onclick="consultarPorWhatsapp()">💬 Consultar por WhatsApp</button>
+        <button class="btn btn-secondary" onclick="compartirProducto()">📤 Compartir este producto</button>
+        <button class="btn btn-secondary" onclick="closeSheet('sheetDetalle')">Cerrar</button>
+      </div>
     </div>
   </div>
 </div>
@@ -358,6 +380,11 @@ const FIREBASE_CONFIG = {
 
 const EDITOR_PASSWORD = 'Prisma21';
 const STORAGE_PREFIX = 'catalogo3d_';
+
+// Número de WhatsApp del negocio para el botón "Consultar" del detalle de
+// producto, en formato internacional sin signos ni espacios (ej: 5491155555555).
+// Mientras esté vacío, el botón avisa que falta configurarlo.
+const WHATSAPP_NUMERO = '';
 
 /* ---------- Subida de fotos a GitHub ---------- */
 const GH_REPO = 'Slabi21/-gestion-3d.html';
@@ -414,6 +441,33 @@ window.guardarTokenGithub = async function(){
   }
 };
 
+// Redimensiona/comprime la foto en el propio celular antes de subirla, para
+// que la subida sea más rápida y el catálogo pese menos para el cliente que
+// lo abre con datos móviles. Devuelve un Blob JPEG, con nombre conservado.
+function comprimirImagen(file, maxDim = 1280, calidad = 0.8){
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      let { width, height } = img;
+      if(width > maxDim || height > maxDim){
+        if(width > height){ height = Math.round(height * (maxDim / width)); width = maxDim; }
+        else{ width = Math.round(width * (maxDim / height)); height = maxDim; }
+      }
+      const canvas = document.createElement('canvas');
+      canvas.width = width; canvas.height = height;
+      canvas.getContext('2d').drawImage(img, 0, 0, width, height);
+      canvas.toBlob(blob => {
+        if(!blob){ reject(new Error('No se pudo comprimir la imagen')); return; }
+        resolve(blob);
+      }, 'image/jpeg', calidad);
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('No se pudo leer la imagen')); };
+    img.src = url;
+  });
+}
+
 function fileABase64(file){
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -432,16 +486,15 @@ function nombreArchivoSeguro(nombreProducto, extension){
   return `${base}-${Date.now().toString(36)}.${extension}`;
 }
 
-async function subirFotoAGithub(file){
+async function subirFotoAGithub(blob, ext){
   const token = ghToken();
   if(!token){
     throw new Error('SIN_TOKEN');
   }
-  const ext = (file.name.split('.').pop() || 'jpg').toLowerCase().replace(/[^a-z0-9]/g, '') || 'jpg';
   const nombreProducto = document.getElementById('pNombre').value;
-  const filename = nombreArchivoSeguro(nombreProducto, ext);
+  const filename = nombreArchivoSeguro(nombreProducto, ext || 'jpg');
   const path = `img/${filename}`;
-  const contentBase64 = await fileABase64(file);
+  const contentBase64 = await fileABase64(blob);
 
   const resp = await fetch(`https://api.github.com/repos/${GH_REPO}/contents/${path}`, {
     method: 'PUT',
@@ -478,9 +531,11 @@ window.onArchivoFotoElegido = async function(event){
     return;
   }
 
-  hint.textContent = 'Subiendo foto al repositorio...';
+  hint.textContent = 'Comprimiendo foto...';
   try{
-    const url = await subirFotoAGithub(file);
+    const comprimida = await comprimirImagen(file);
+    hint.textContent = 'Subiendo foto al repositorio...';
+    const url = await subirFotoAGithub(comprimida, 'jpg');
     if(url){
       fotosEdit.push(url);
       renderFotosEdit();
@@ -507,6 +562,7 @@ let fbApp=null, fbAuth=null, fbDb=null, fbSdk=null;
 let productos = [];
 let editorUnlocked = localStorage.getItem(STORAGE_PREFIX + 'editorUnlocked') === 'true';
 let primerSnapshotLlegado = false;
+let filtroCategoria = '';
 
 function uid(){ return Date.now().toString(36) + Math.random().toString(36).slice(2,7); }
 function escapeHtml(str){
@@ -514,7 +570,13 @@ function escapeHtml(str){
 }
 function escapeAttr(str){ return (str||'').replace(/"/g,'&quot;'); }
 window.openSheet = id => document.getElementById(id).classList.add('active');
-window.closeSheet = id => document.getElementById(id).classList.remove('active');
+window.closeSheet = id => {
+  document.getElementById(id).classList.remove('active');
+  if(id === 'sheetDetalle'){
+    detalleProductoActualId = null;
+    if(history.replaceState) history.replaceState(null, '', location.pathname + location.search);
+  }
+};
 
 // Imagen predefinida para productos sin foto cargada (SVG propio, mismo
 // estilo del ícono de la app — capas de impresión 3D en naranja "filamento").
@@ -546,10 +608,16 @@ function escucharProductos(){
   const ref = fbSdk.collection(fbDb, 'productos');
   fbSdk.onSnapshot(ref, snap => {
     productos = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    const primeraVez = !primerSnapshotLlegado;
     primerSnapshotLlegado = true;
     actualizarDatalistCategorias();
+    renderFiltroCategorias();
     renderCatalogo();
     document.getElementById('syncNote').textContent = 'Sincronizado · ' + new Date().toLocaleTimeString('es-AR', {hour:'2-digit', minute:'2-digit'});
+    if(primeraVez){
+      const idDesdeHash = location.hash ? location.hash.slice(1) : '';
+      if(idDesdeHash && productos.some(p => p.id === idDesdeHash)) abrirDetalleProducto(idDesdeHash);
+    }
   }, err => {
     console.warn('Error escuchando catálogo', err);
     document.getElementById('contenido').innerHTML = '<div class="empty-state">No se pudo conectar con el catálogo. Revisá tu conexión.</div>';
@@ -562,12 +630,30 @@ function actualizarDatalistCategorias(){
   document.getElementById('categoriasList').innerHTML = cats.map(c => `<option value="${escapeAttr(c)}">`).join('');
 }
 
+function renderFiltroCategorias(){
+  const el = document.getElementById('catFilterBar');
+  const cats = [...new Set(productos.map(p => (p.categoria||'').trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'es'));
+  if(cats.length === 0){ el.innerHTML = ''; return; }
+  const chips = [{val:'', label:'Todos'}, ...cats.map(c=>({val:c, label:c}))];
+  el.innerHTML = chips.map(c => `
+    <button type="button" class="cat-filter-chip ${filtroCategoria===c.val?'active':''}" onclick="filtrarPorCategoria('${escapeAttr(c.val)}')">${escapeHtml(c.label)}</button>
+  `).join('');
+}
+window.filtrarPorCategoria = function(val){
+  filtroCategoria = val;
+  renderFiltroCategorias();
+  renderCatalogo();
+};
+
 window.renderCatalogo = renderCatalogo;
 function renderCatalogo(){
   const cont = document.getElementById('contenido');
   const q = (document.getElementById('buscador').value || '').toLowerCase().trim();
 
   let lista = productos;
+  if(filtroCategoria){
+    lista = lista.filter(p => (p.categoria||'').trim() === filtroCategoria);
+  }
   if(q){
     lista = lista.filter(p =>
       (p.nombre||'').toLowerCase().includes(q) || (p.categoria||'').toLowerCase().includes(q)
@@ -652,9 +738,13 @@ document.getElementById('detalleGaleria').addEventListener('scroll', () => {
   requestAnimationFrame(actualizarDotsActivo);
 });
 
+let detalleProductoActualId = null;
+
 window.abrirDetalleProducto = function(id){
   const p = productos.find(x => x.id === id);
   if(!p) return;
+  detalleProductoActualId = id;
+  if(history.replaceState) history.replaceState(null, '', '#' + id);
 
   const backdrop = document.getElementById('sheetDetalle');
   const sheetEl = backdrop.querySelector('.sheet');
@@ -690,6 +780,35 @@ window.abrirDetalleProducto = function(id){
   descEl.style.display = p.descripcion ? '' : 'none';
 
   openSheet('sheetDetalle');
+};
+
+window.consultarPorWhatsapp = function(){
+  const p = productos.find(x => x.id === detalleProductoActualId);
+  if(!p) return;
+  if(!WHATSAPP_NUMERO){
+    alert('Falta configurar el número de WhatsApp del negocio. Buscá WHATSAPP_NUMERO al principio del código de catalogo-3d.html.');
+    return;
+  }
+  const precio = Number(p.precio) || 0;
+  const texto = `Hola! Te escribo por *${p.nombre}*, $${precio.toLocaleString('es-AR')}`;
+  window.open(`https://wa.me/${WHATSAPP_NUMERO}?text=${encodeURIComponent(texto)}`, '_blank');
+};
+
+window.compartirProducto = async function(){
+  const p = productos.find(x => x.id === detalleProductoActualId);
+  if(!p) return;
+  const url = location.origin + location.pathname + '#' + p.id;
+  const texto = `Mirá este producto: ${p.nombre}`;
+  if(navigator.share){
+    try{ await navigator.share({ title: p.nombre, text: texto, url }); }catch(e){ /* cancelado */ }
+  }else{
+    try{
+      await navigator.clipboard.writeText(`${texto} ${url}`);
+      alert('Copiado. Pegalo en el chat de WhatsApp del cliente.');
+    }catch(e){
+      prompt('Copiá este link para compartirlo:', url);
+    }
+  }
 };
 
 /* ---------- Clave / modo edición ---------- */
@@ -744,12 +863,22 @@ function renderFotosEdit(){
   cont.innerHTML = fotosEdit.map((url, i) => `
     <div class="foto-thumb-edit">
       <img src="${escapeAttr(url)}" onerror="this.onerror=null;this.src='${DEFAULT_PHOTO}';">
+      <div class="foto-thumb-reorder">
+        <button type="button" onclick="moverFotoEdit(${i}, -1)" ${i === 0 ? 'disabled' : ''} title="Mover antes">▲</button>
+        <button type="button" onclick="moverFotoEdit(${i}, 1)" ${i === fotosEdit.length - 1 ? 'disabled' : ''} title="Mover después">▼</button>
+      </div>
       <button type="button" class="foto-thumb-remove" onclick="quitarFotoEdit(${i})" title="Sacar">✕</button>
       ${i === 0 ? '<span class="foto-thumb-tag">portada</span>' : ''}
     </div>`).join('');
 }
 window.quitarFotoEdit = function(i){
   fotosEdit.splice(i, 1);
+  renderFotosEdit();
+};
+window.moverFotoEdit = function(i, delta){
+  const j = i + delta;
+  if(j < 0 || j >= fotosEdit.length) return;
+  [fotosEdit[i], fotosEdit[j]] = [fotosEdit[j], fotosEdit[i]];
   renderFotosEdit();
 };
 window.agregarFotoUrlManual = function(){

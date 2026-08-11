@@ -516,6 +516,10 @@
     </div>
     <div class="toolbar">
       <div id="orderFilterBar"></div>
+      <div class="search-wrap">
+        <span class="glass">🔍</span>
+        <input class="search-input" id="orderSearch" placeholder="Buscar por producto o cliente..." oninput="renderOrders()">
+      </div>
       <select class="sort-select" id="orderSort" onchange="renderOrders()">
         <option value="createdAt_desc">Más recientes primero</option>
         <option value="createdAt_asc">Más antiguos primero</option>
@@ -559,6 +563,7 @@
     <div class="sheet-handle"></div>
     <h3 id="clienteSheetTitle">Nuevo cliente</h3>
     <input type="hidden" id="clienteId">
+    <input type="hidden" id="clienteProspectoOrigen">
     <div class="field"><label>Nombre</label><input id="clienteNombre" placeholder="Ej: María Gómez"></div>
     <div class="field-row">
       <div class="field"><label>Teléfono</label><input id="clienteTelefono" placeholder="11 5555-5555" type="tel"><span class="field-hint">Se agrega +54 9 solo. Escribilo sin el 0 ni el 15 (ej: 11 5555-5555)</span></div>
@@ -626,9 +631,13 @@
         <select id="pedidoEstado">
           <option value="wip">En impresión</option>
           <option value="ready">Listo para entregar</option>
-          <option value="done">Entregado y cobrado</option>
+          <option value="done">Entregado</option>
         </select>
       </div>
+    </div>
+    <div class="field" style="display:flex;align-items:center;gap:8px;">
+      <input type="checkbox" id="pedidoCobrado" style="width:auto;">
+      <label for="pedidoCobrado" style="margin:0;font-size:13.5px;color:var(--ink);font-weight:400;">Ya está cobrado</label>
     </div>
     <div class="sheet-actions">
       <button class="btn btn-danger" id="btnEliminarPedidoForm" style="display:none;" onclick="deletePedido()">Eliminar</button>
@@ -855,7 +864,7 @@ let syncTimer = null;
 let lastSyncAt = null;
 let editandoVendedorId = null;
 
-const STATUS_LABEL = { wip: 'En impresión', ready: 'Listo para entregar', done: 'Entregado y cobrado' };
+const STATUS_LABEL = { wip: 'En impresión', ready: 'Listo para entregar', done: 'Entregado' };
 const STATUS_CLASS = { wip: 'status-wip', ready: 'status-ready', done: 'status-done' };
 
 function uid(){ return Date.now().toString(36) + Math.random().toString(36).slice(2,7); }
@@ -868,6 +877,21 @@ function migrarPedidosViejos(){
       o.items = [{ id: uid(), nombre: o.item || 'Producto', cantidad: 1, precio: Number(o.precio)||0 }];
       delete o.item;
       delete o.precio;
+      changed = true;
+    }
+  });
+  return changed;
+}
+
+// Antes "Entregado y cobrado" era un solo estado. Ahora se separan: el
+// estado 'done' pasa a significar solo "Entregado", y el cobro es un campo
+// aparte (cobrado: true/false). Los pedidos viejos que ya estaban en 'done'
+// se migran asumiendo que también estaban cobrados, para no perder el dato.
+function migrarCobradoViejos(){
+  let changed = false;
+  orders.forEach(o=>{
+    if(o.cobrado === undefined){
+      o.cobrado = o.estado === 'done';
       changed = true;
     }
   });
@@ -897,7 +921,7 @@ async function loadAll(){
     const o = localStorage.getItem(STORAGE_PREFIX + 'orders');
     orders = o ? JSON.parse(o) : [];
   }catch(e){ orders = []; }
-  const migrated = migrarPedidosViejos();
+  const migrated = migrarPedidosViejos() | migrarCobradoViejos();
   if(migrated) await persist('orders', orders);
   try{
     const p = localStorage.getItem(STORAGE_PREFIX + 'prospects');
@@ -994,6 +1018,7 @@ function renderClients(){
 function openClienteForm(id){
   document.getElementById('clienteSheetTitle').textContent = id ? 'Editar cliente' : 'Nuevo cliente';
   document.getElementById('clienteId').value = id || '';
+  document.getElementById('clienteProspectoOrigen').value = '';
   const fuente = casaMatrizModo ? cmConsolidado.clients : clients;
   const c = id ? fuente.find(x=>x.id===id) : null;
   document.getElementById('clienteNombre').value = c?.nombre || '';
@@ -1057,6 +1082,14 @@ async function saveCliente(){
     clients.push({ id: uid(), createdAt: Date.now(), documentoUrl: null, vendedor: vendorName || null, ...data });
   }
   await persist('clients', clients);
+
+  const prospectoOrigenId = document.getElementById('clienteProspectoOrigen').value;
+  if(prospectoOrigenId){
+    prospects = prospects.filter(p=>p.id!==prospectoOrigenId);
+    await persist('prospects', prospects);
+    renderProspects();
+  }
+
   renderClients();
   closeSheet('sheetCliente');
 }
@@ -1078,7 +1111,7 @@ function openClienteDetalle(id){
   const cOrders = ordersFuente().filter(o=>o.clienteId===id);
   const list = document.getElementById('detalleClientePedidos');
   list.innerHTML = cOrders.length
-    ? cOrders.map(o=>`<div class="detail-row"><span class="detail-label">${escapeHtml(ordResumen(o))}</span><span class="detail-value">${STATUS_LABEL[o.estado]}</span></div>`).join('')
+    ? cOrders.map(o=>`<div class="detail-row"><span class="detail-label">${escapeHtml(ordResumen(o))}</span><span class="detail-value">${STATUS_LABEL[o.estado]}${o.cobrado ? ' · 💰' : ' · ⏳'}</span></div>`).join('')
     : '<p style="color:var(--ink-dim);font-size:13px;">Sin pedidos todavía</p>';
 
   openSheet('sheetClienteDetalle');
@@ -1122,6 +1155,18 @@ function renderOrders(){
   const clienteNombre = (o) => (clientesBase.find(c=>c.id===o.clienteId)?.nombre || '').toLowerCase();
   const estadoOrder = { wip: 0, ready: 1, done: 2 };
 
+  const term = (document.getElementById('orderSearch')?.value || '').trim().toLowerCase();
+  if(term){
+    base = base.filter(o => {
+      const haystack = (ordResumen(o) + ' ' + clienteNombre(o)).toLowerCase();
+      return haystack.includes(term);
+    });
+    if(base.length === 0){
+      list.innerHTML = emptyState('🔍', 'Sin resultados', `Ningún pedido coincide con "${term}"`);
+      return;
+    }
+  }
+
   const sorted = [...base].sort((a,b) => {
     switch(sortMode){
       case 'createdAt_asc':
@@ -1155,7 +1200,10 @@ function renderOrders(){
           <div class="order-main">
             <div class="order-item">${escapeHtml(ordResumen(o))}${o._cmOverride ? overrideChip() : ''}</div>
             <div class="order-client">${cliente ? escapeHtml(cliente.nombre) : 'Sin cliente'}${o.fecha ? ' · '+formatDate(o.fecha) : ''}</div>
-            <div class="status-chip ${STATUS_CLASS[o.estado]}" onclick="cycleStatus('${o.id}')">${STATUS_LABEL[o.estado]}</div>
+            <div style="display:flex;gap:6px;flex-wrap:wrap;">
+              <div class="status-chip ${STATUS_CLASS[o.estado]}" onclick="cycleStatus('${o.id}')">${STATUS_LABEL[o.estado]}</div>
+              <div class="status-chip ${o.cobrado ? 'status-done' : 'status-ready'}" onclick="toggleCobrado('${o.id}')">${o.cobrado ? '💰 Cobrado' : '⏳ Sin cobrar'}</div>
+            </div>
             ${casaMatrizModo ? vendorChip(o.vendedor) : ''}
           </div>
           <div class="order-side">
@@ -1287,6 +1335,7 @@ function openPedidoForm(id){
   if(o) select.value = o.clienteId;
   document.getElementById('pedidoFecha').value = o?.fecha || '';
   document.getElementById('pedidoEstado').value = o?.estado || 'wip';
+  document.getElementById('pedidoCobrado').checked = !!o?.cobrado;
 
   document.getElementById('productosList').innerHTML = '';
   if(o && o.items && o.items.length){
@@ -1311,6 +1360,7 @@ async function savePedido(){
     items,
     fecha: document.getElementById('pedidoFecha').value,
     estado: document.getElementById('pedidoEstado').value,
+    cobrado: document.getElementById('pedidoCobrado').checked,
   };
 
   if(casaMatrizModo){
@@ -1364,6 +1414,19 @@ async function cycleStatus(id){
   renderOrders();
 }
 
+async function toggleCobrado(id){
+  if(casaMatrizModo){
+    const o = cmConsolidado.orders.find(x=>x.id===id);
+    if(!o) return;
+    await guardarOverrideCasaMatriz('orders', id, { cobrado: !o.cobrado });
+    return;
+  }
+  const order = orders.find(o=>o.id===id);
+  order.cobrado = !order.cobrado;
+  await persist('orders', orders);
+  renderOrders();
+}
+
 /* ---------- PROSPECTOS ---------- */
 function renderProspects(){
   document.getElementById('prospectCount').textContent = prospects.length;
@@ -1381,7 +1444,10 @@ function renderProspects(){
         ${p.nota ? `<div class="prospect-note">${escapeHtml(p.nota)}</div>` : ''}
         <div class="prospect-date">${formatDate(new Date(p.createdAt).toISOString().slice(0,10))}</div>
       </div>
-      <button class="btn btn-danger" style="flex:none;padding:6px 10px;font-size:12px;" onclick="deleteProspecto('${p.id}')">✕</button>
+      <div style="display:flex;flex-direction:column;gap:6px;flex:none;">
+        <button class="btn btn-secondary" style="padding:6px 10px;font-size:11.5px;" onclick="convertirProspectoEnCliente('${p.id}')">→ Cliente</button>
+        <button class="btn btn-danger" style="padding:6px 10px;font-size:12px;" onclick="deleteProspecto('${p.id}')">✕</button>
+      </div>
     </div>
   `).join('');
 }
@@ -1405,6 +1471,16 @@ async function saveProspecto(){
   await persist('prospects', prospects);
   renderProspects();
   closeSheet('sheetProspecto');
+}
+
+function convertirProspectoEnCliente(id){
+  if(casaMatrizModo){ alert('Casa matriz no da de alta clientes directamente. Convertí el prospecto desde la app del vendedor.'); return; }
+  const p = prospects.find(x=>x.id===id);
+  if(!p) return;
+  openClienteForm();
+  document.getElementById('clienteNombre').value = p.nombre;
+  document.getElementById('clienteNotas').value = p.nota || '';
+  document.getElementById('clienteProspectoOrigen').value = id;
 }
 
 async function deleteProspecto(id){
