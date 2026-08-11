@@ -69,8 +69,9 @@
   }
   .product-card{
     background: var(--surface); border:1px solid var(--border); border-radius:16px; overflow:hidden;
-    display:flex; flex-direction:column; position:relative;
+    display:flex; flex-direction:column; position:relative; cursor:pointer;
   }
+  .product-card:active{ background: var(--surface-2); }
   .product-photo{
     width:100%; aspect-ratio:1/1; background: var(--surface-2);
     display:flex; align-items:center; justify-content:center; overflow:hidden;
@@ -149,6 +150,39 @@
   .form-error{ color:#f87171; font-size:12.5px; margin: -6px 0 12px; min-height:14px; }
 
   .sync-note{ text-align:center; color: var(--ink-dim); font-size:11px; margin: 10px 0 0; font-family:'JetBrains Mono',monospace; }
+
+  /* ---------- Galería de fotos en el formulario de edición ---------- */
+  .foto-galeria-edit{ display:flex; flex-wrap:wrap; gap:8px; margin-top:10px; }
+  .foto-thumb-edit{
+    position:relative; width:68px; height:68px; border-radius:11px; overflow:hidden;
+    background: var(--surface-2); border:1px solid var(--border); flex:none;
+  }
+  .foto-thumb-edit img{ width:100%; height:100%; object-fit:cover; display:block; }
+  .foto-thumb-remove{
+    position:absolute; top:2px; right:2px; width:19px; height:19px; border-radius:50%;
+    background: rgba(20,21,24,.85); color:#fff; border:none; font-size:10px; line-height:1;
+    display:flex; align-items:center; justify-content:center; cursor:pointer;
+  }
+  .foto-thumb-tag{
+    position:absolute; bottom:0; left:0; right:0; background: rgba(255,122,41,.9); color: var(--accent-ink);
+    font-size:8.5px; font-weight:700; text-align:center; padding:1.5px 0; text-transform:uppercase; letter-spacing:.03em;
+  }
+
+  /* ---------- Detalle ampliado del producto (vista cliente) ---------- */
+  .detalle-galeria{
+    display:flex; overflow-x:auto; scroll-snap-type:x mandatory; -webkit-overflow-scrolling:touch;
+    background: var(--surface-2); scrollbar-width:none;
+  }
+  .detalle-galeria::-webkit-scrollbar{ display:none; }
+  .detalle-galeria img{
+    flex:0 0 100%; width:100%; aspect-ratio:1/1; object-fit:cover; scroll-snap-align:center; display:block;
+  }
+  .detalle-info{ padding:16px 18px 4px; overflow-y:auto; }
+  .detalle-cat{ font-size:11px; text-transform:uppercase; letter-spacing:.06em; color: var(--accent); font-weight:700; }
+  .detalle-nombre{ margin:3px 0 8px; font-size:18px; }
+  .detalle-precio{ font-size:21px; font-weight:700; color: var(--accent); }
+  .detalle-dias{ font-size:12.5px; color: var(--ink-dim); margin-top:3px; font-family:'JetBrains Mono',monospace; }
+  .detalle-desc{ font-size:13.5px; line-height:1.65; color: var(--ink); margin-top:14px; white-space:pre-wrap; }
 </style>
 </head>
 <body>
@@ -220,16 +254,25 @@
       </div>
     </div>
     <div class="field">
-      <label>Foto</label>
+      <label>Fotos</label>
       <label class="btn btn-secondary" id="btnSubirFotoLabel" style="display:flex;align-items:center;justify-content:center;gap:6px;cursor:pointer;margin-bottom:8px;">
         📤 Subir foto desde el dispositivo
         <input type="file" id="pFotoArchivo" accept="image/*" style="display:none;" onchange="onArchivoFotoElegido(event)">
       </label>
-      <input id="pFoto" placeholder="...o pegá una URL directamente" oninput="actualizarPreviewFoto()">
-      <div class="field-hint" id="pFotoHint">
-        Podés dejarlo vacío si todavía no tenés foto. El botón sube la imagen sola a la carpeta <code>img/</code> del repositorio (necesita el token configurado en Modo edición → subida de fotos).
+      <div class="field-row">
+        <div class="field" style="margin-bottom:0;">
+          <input id="pFotoUrlManual" placeholder="...o pegá una URL y agregala">
+        </div>
+        <button type="button" class="btn btn-secondary" style="width:auto;padding:0 14px;flex:none;" onclick="agregarFotoUrlManual()">Agregar</button>
       </div>
-      <div class="foto-preview" id="fotoPreview"><span class="ph">Sin foto</span></div>
+      <div class="field-hint" id="pFotoHint">
+        Podés cargar varias fotos: la primera de la lista es la que se ve en la tarjeta del catálogo. Tocá la ✕ para sacar una.
+      </div>
+      <div class="foto-galeria-edit" id="fotoGaleriaEdit"></div>
+    </div>
+    <div class="field">
+      <label>Descripción</label>
+      <textarea id="pDescripcion" rows="3" placeholder="Detalle libre: materiales, medidas, variantes, colores disponibles, etc."></textarea>
     </div>
     <div class="form-error" id="productoError"></div>
     <div class="btn-row">
@@ -261,6 +304,22 @@
       <button class="btn btn-primary" onclick="guardarTokenGithub()">Guardar y probar</button>
       <button class="btn btn-danger" id="btnQuitarToken" style="display:none;" onclick="quitarTokenGithub()">Quitar token de este dispositivo</button>
       <button class="btn btn-secondary" onclick="closeSheet('sheetGithub')">Cerrar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Sheet: detalle ampliado del producto -->
+<div class="sheet-backdrop" id="sheetDetalle">
+  <div class="sheet" style="padding:0; max-height:92vh; overflow:hidden; display:flex; flex-direction:column;">
+    <div class="sheet-handle" style="margin:10px auto 0; flex:none;"></div>
+    <div class="detalle-galeria" id="detalleGaleria"></div>
+    <div class="detalle-info">
+      <div class="detalle-cat" id="detalleCat"></div>
+      <h3 class="detalle-nombre" id="detalleNombre"></h3>
+      <div class="detalle-precio mono" id="detallePrecio"></div>
+      <div class="detalle-dias" id="detalleDias"></div>
+      <p class="detalle-desc" id="detalleDesc"></p>
+      <button class="btn btn-secondary" style="margin:16px 0 4px;" onclick="closeSheet('sheetDetalle')">Cerrar</button>
     </div>
   </div>
 </div>
@@ -412,9 +471,9 @@ window.onArchivoFotoElegido = async function(event){
   try{
     const url = await subirFotoAGithub(file);
     if(url){
-      document.getElementById('pFoto').value = url;
-      actualizarPreviewFoto();
-      hint.textContent = '✅ Foto subida. La URL ya quedó completada arriba.';
+      fotosEdit.push(url);
+      renderFotosEdit();
+      hint.textContent = '✅ Foto subida y agregada a la galería.';
     }else{
       hint.textContent = hintOriginal;
       errEl.textContent = 'La foto se subió pero no se pudo leer la URL. Revisá el repositorio.';
@@ -544,16 +603,20 @@ function renderCatalogo(){
   }).join('');
 }
 
+function primeraFoto(p){
+  return (p.fotos && p.fotos.length) ? p.fotos[0] : (p.fotoUrl || '');
+}
+
 function productoCardHtml(p){
   const precio = Number(p.precio) || 0;
   const dias = Number(p.diasImpresion) || 0;
-  const fotoSrc = p.fotoUrl || DEFAULT_PHOTO;
+  const fotoSrc = primeraFoto(p) || DEFAULT_PHOTO;
   const foto = `<img src="${escapeAttr(fotoSrc)}" alt="${escapeAttr(p.nombre)}" onerror="this.onerror=null;this.src='${DEFAULT_PHOTO}';">`;
   return `
-    <div class="product-card">
+    <div class="product-card" onclick="abrirDetalleProducto('${p.id}')">
       ${editorUnlocked ? `
         <div class="product-edit-actions">
-          <button class="mini-btn" onclick="abrirProductoForm('${p.id}')" title="Editar">✎</button>
+          <button class="mini-btn" onclick="event.stopPropagation(); abrirProductoForm('${p.id}')" title="Editar">✎</button>
         </div>` : ''}
       <div class="product-photo">${foto}</div>
       <div class="product-info">
@@ -563,6 +626,30 @@ function productoCardHtml(p){
       </div>
     </div>`;
 }
+
+/* ---------- Detalle ampliado del producto ---------- */
+window.abrirDetalleProducto = function(id){
+  const p = productos.find(x => x.id === id);
+  if(!p) return;
+  const fotos = (p.fotos && p.fotos.length) ? p.fotos : (p.fotoUrl ? [p.fotoUrl] : []);
+  const galeria = document.getElementById('detalleGaleria');
+  galeria.innerHTML = fotos.length
+    ? fotos.map(url => `<img src="${escapeAttr(url)}" alt="${escapeAttr(p.nombre)}" onerror="this.onerror=null;this.src='${DEFAULT_PHOTO}';">`).join('')
+    : `<img src="${DEFAULT_PHOTO}" alt="${escapeAttr(p.nombre)}">`;
+  galeria.scrollLeft = 0;
+
+  document.getElementById('detalleCat').textContent = p.categoria || '';
+  document.getElementById('detalleNombre').textContent = p.nombre || '';
+  const precio = Number(p.precio) || 0;
+  document.getElementById('detallePrecio').textContent = '$' + precio.toLocaleString('es-AR');
+  const dias = Number(p.diasImpresion) || 0;
+  document.getElementById('detalleDias').textContent = dias > 0 ? `≈ ${dias} día${dias===1?'':'s'} de impresión` : '';
+  const descEl = document.getElementById('detalleDesc');
+  descEl.textContent = p.descripcion || '';
+  descEl.style.display = p.descripcion ? '' : 'none';
+
+  openSheet('sheetDetalle');
+};
 
 /* ---------- Clave / modo edición ---------- */
 window.onLockBtnClick = function(){
@@ -604,12 +691,33 @@ function actualizarUIModo(){
   document.getElementById('footerUnlocked').style.display = editorUnlocked ? '' : 'none';
 }
 
-/* ---------- Formulario de producto ---------- */
-window.actualizarPreviewFoto = function(){
-  const url = document.getElementById('pFoto').value.trim();
-  const prev = document.getElementById('fotoPreview');
-  const src = url || DEFAULT_PHOTO;
-  prev.innerHTML = `<img src="${escapeAttr(src)}" onerror="this.onerror=null;this.src='${DEFAULT_PHOTO}';">`;
+/* ---------- Formulario de producto: galería de fotos ---------- */
+let fotosEdit = [];
+
+function renderFotosEdit(){
+  const cont = document.getElementById('fotoGaleriaEdit');
+  if(!fotosEdit.length){
+    cont.innerHTML = '<span style="font-size:11px;color:var(--ink-dim);">Todavía no hay fotos cargadas.</span>';
+    return;
+  }
+  cont.innerHTML = fotosEdit.map((url, i) => `
+    <div class="foto-thumb-edit">
+      <img src="${escapeAttr(url)}" onerror="this.onerror=null;this.src='${DEFAULT_PHOTO}';">
+      <button type="button" class="foto-thumb-remove" onclick="quitarFotoEdit(${i})" title="Sacar">✕</button>
+      ${i === 0 ? '<span class="foto-thumb-tag">portada</span>' : ''}
+    </div>`).join('');
+}
+window.quitarFotoEdit = function(i){
+  fotosEdit.splice(i, 1);
+  renderFotosEdit();
+};
+window.agregarFotoUrlManual = function(){
+  const input = document.getElementById('pFotoUrlManual');
+  const val = input.value.trim();
+  if(!val) return;
+  fotosEdit.push(val);
+  input.value = '';
+  renderFotosEdit();
 };
 
 window.abrirProductoForm = function(id){
@@ -621,8 +729,10 @@ window.abrirProductoForm = function(id){
   document.getElementById('pCategoria').value = p?.categoria || '';
   document.getElementById('pPrecio').value = p?.precio ?? '';
   document.getElementById('pDias').value = p?.diasImpresion ?? '';
-  document.getElementById('pFoto').value = p?.fotoUrl || '';
-  actualizarPreviewFoto();
+  document.getElementById('pDescripcion').value = p?.descripcion || '';
+  document.getElementById('pFotoUrlManual').value = '';
+  fotosEdit = (p?.fotos && p.fotos.length) ? [...p.fotos] : (p?.fotoUrl ? [p.fotoUrl] : []);
+  renderFotosEdit();
   document.getElementById('btnEliminarProducto').style.display = id ? '' : 'none';
   openSheet('sheetProducto');
 };
@@ -636,7 +746,9 @@ window.guardarProducto = async function(){
     categoria: document.getElementById('pCategoria').value.trim(),
     precio: Number(document.getElementById('pPrecio').value) || 0,
     diasImpresion: Number(document.getElementById('pDias').value) || 0,
-    fotoUrl: document.getElementById('pFoto').value.trim(),
+    descripcion: document.getElementById('pDescripcion').value.trim(),
+    fotos: fotosEdit.slice(),
+    fotoUrl: fotosEdit[0] || '',
     updatedAt: Date.now(),
   };
   try{

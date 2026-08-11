@@ -82,9 +82,11 @@
     letter-spacing: -0.01em;
     position:relative;
   }
+  .header-actions{
+    position:absolute; top:20px; right:18px; z-index:2;
+    display:flex; gap:8px;
+  }
   .backup-btn{
-    position:absolute;
-    top:20px; right:18px;
     width:36px; height:36px;
     border-radius:10px;
     background: var(--surface-2);
@@ -93,7 +95,6 @@
     font-size:16px;
     display:flex; align-items:center; justify-content:center;
     cursor:pointer;
-    z-index:2;
   }
   .backup-btn:active{ opacity:.7; }
   .tagline{
@@ -480,7 +481,11 @@
   <p class="eyebrow mono">Taller de impresión 3D</p>
   <h1 id="headerTitle">Clientes</h1>
   <p class="tagline" id="headerTag">Gestioná tu negocio desde el celular</p>
-  <button class="backup-btn" id="backupBtn" aria-label="Copia de seguridad">⚙️</button>
+  <div class="header-actions">
+    <button class="backup-btn" id="catalogBtn" aria-label="Ver catálogo" title="Ver catálogo">📋</button>
+    <button class="backup-btn" id="shareCatalogBtn" aria-label="Compartir catálogo" title="Compartir catálogo">📤</button>
+    <button class="backup-btn" id="backupBtn" aria-label="Copia de seguridad">⚙️</button>
+  </div>
 </header>
 
 <main>
@@ -1835,6 +1840,29 @@ loadAll();
 
 <script>
 document.getElementById('backupBtn').addEventListener('click', ()=> openSheet('sheetBackup'));
+
+/* --- Catálogo: abrir y compartir --- */
+const CATALOGO_URL = 'https://slabi21.github.io/-gestion-3d.html/catalogo-3d.html';
+
+document.getElementById('catalogBtn').addEventListener('click', ()=>{
+  window.open(CATALOGO_URL, '_blank');
+});
+
+document.getElementById('shareCatalogBtn').addEventListener('click', async ()=>{
+  const texto = 'Mirá nuestro catálogo de productos 3D:';
+  if(navigator.share){
+    try{
+      await navigator.share({ title: 'Catálogo — Taller 3D', text: texto, url: CATALOGO_URL });
+    }catch(e){ /* el usuario canceló el share, no hacer nada */ }
+  }else{
+    try{
+      await navigator.clipboard.writeText(`${texto} ${CATALOGO_URL}`);
+      alert('Copiado. Pegalo en el chat de WhatsApp (o donde quieras) del cliente.');
+    }catch(e){
+      prompt('Copiá este link para compartirlo:', CATALOGO_URL);
+    }
+  }
+});
 
 /* --- Tamaño de letra --- */
 const FS_KEY = STORAGE_PREFIX + 'fontScale';
