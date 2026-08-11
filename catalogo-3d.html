@@ -211,7 +211,7 @@
   /* ---------- Detalle ampliado del producto (vista cliente) ---------- */
   .detalle-galeria{
     display:flex; overflow-x:auto; scroll-snap-type:x mandatory; -webkit-overflow-scrolling:touch;
-    background: var(--surface-2); scrollbar-width:none;
+    background: var(--surface-2); scrollbar-width:none; flex:none;
   }
   .detalle-galeria::-webkit-scrollbar{ display:none; }
   .detalle-galeria img{
@@ -226,7 +226,10 @@
     transition: background .15s ease, transform .15s ease;
   }
   .detalle-dot.active{ background: var(--accent); transform: scale(1.35); }
-  .detalle-info{ padding:16px 18px 4px; overflow-y:auto; }
+  .detalle-info{
+    padding:16px 18px 4px; overflow-y:auto; -webkit-overflow-scrolling:touch;
+    flex:1 1 auto; min-height:0;
+  }
   .detalle-cat{ font-size:11px; text-transform:uppercase; letter-spacing:.06em; color: var(--accent); font-weight:700; }
   .detalle-nombre{ margin:3px 0 8px; font-size:18px; }
   .detalle-precio{ font-size:21px; font-weight:700; color: var(--accent); }
