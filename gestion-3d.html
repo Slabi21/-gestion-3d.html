@@ -307,8 +307,13 @@
     width:100%; background: var(--bg); border:1px solid var(--line);
     color: var(--ink); border-radius:8px; padding:9px 10px; font-size:13.5px; font-family:inherit;
   }
-  .product-qty-input{ flex: 0 0 30%; }
+  .product-qty-input{ flex: 0 0 26%; }
   .product-price-input{ flex:1; }
+  .product-days-input{
+    width:100%; background: var(--bg); border:1px solid var(--line);
+    color: var(--ink); border-radius:8px; padding:9px 10px; font-size:13.5px; font-family:inherit;
+    flex: 0 0 76px;
+  }
   .product-subtotal{
     font-family:'JetBrains Mono', monospace; font-size:11.5px; color: var(--ink-dim);
     margin-top:2px;
@@ -324,6 +329,33 @@
     font-size:13.5px; font-weight:600; cursor:pointer; font-family:inherit;
   }
   .add-product-btn:active{ background: var(--surface-2); }
+  .product-row-buttons{ display:flex; gap:8px; }
+  .product-row-buttons .add-product-btn{ flex:1; }
+  .catalog-pick-btn{
+    flex:1; background: rgba(255,122,41,.1); border: 1px solid rgba(255,122,41,.3);
+    color: var(--accent); border-radius:10px; padding:10px;
+    font-size:13.5px; font-weight:600; cursor:pointer; font-family:inherit;
+  }
+  .catalog-pick-btn:active{ background: rgba(255,122,41,.18); }
+  .catalog-pick-list{ max-height:52vh; overflow-y:auto; margin: 4px 0 6px; }
+  .catalog-pick-cat{
+    font-size:11.5px; font-weight:700; text-transform:uppercase; letter-spacing:.5px;
+    color: var(--accent); margin: 14px 0 8px 2px;
+  }
+  .catalog-pick-cat:first-child{ margin-top:0; }
+  .catalog-pick-item{
+    display:flex; align-items:center; gap:10px;
+    background: var(--surface-2); border:1px solid var(--line); border-radius:10px;
+    padding:9px 10px; margin-bottom:8px; cursor:pointer;
+  }
+  .catalog-pick-item:active{ background: var(--bg); }
+  .catalog-pick-photo{
+    width:40px; height:40px; border-radius:8px; overflow:hidden; flex:none; background: var(--bg);
+  }
+  .catalog-pick-photo img{ width:100%; height:100%; object-fit:cover; display:block; }
+  .catalog-pick-info{ flex:1; min-width:0; }
+  .catalog-pick-name{ font-size:13.5px; font-weight:600; }
+  .catalog-pick-meta{ font-size:11px; color: var(--ink-dim); font-family:'JetBrains Mono',monospace; margin-top:2px; }
   .order-total-row{
     display:flex; justify-content:space-between; align-items:center;
     background: var(--surface-2); border-radius:10px;
@@ -571,7 +603,10 @@
     <div class="field">
       <label>Productos del pedido</label>
       <div id="productosList"></div>
-      <button type="button" class="add-product-btn" onclick="addProductRow()">+ Agregar producto</button>
+      <div class="product-row-buttons">
+        <button type="button" class="add-product-btn" onclick="addProductRow()">+ Agregar producto</button>
+        <button type="button" class="catalog-pick-btn" onclick="abrirCatalogoPicker()">📋 Elegir del catálogo</button>
+      </div>
     </div>
 
     <div class="order-total-row">
@@ -594,6 +629,20 @@
       <button class="btn btn-danger" id="btnEliminarPedidoForm" style="display:none;" onclick="deletePedido()">Eliminar</button>
       <button class="btn btn-secondary" onclick="closeSheet('sheetPedido')">Cancelar</button>
       <button class="btn btn-primary" onclick="savePedido()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<div class="sheet-backdrop" id="sheetCatalogo">
+  <div class="sheet">
+    <div class="sheet-handle"></div>
+    <h3>Elegir del catálogo</h3>
+    <div class="field">
+      <input id="catalogoPickBuscador" placeholder="Buscar producto..." oninput="renderCatalogoPicker()">
+    </div>
+    <div class="catalog-pick-list" id="catalogoPickList">Cargando catálogo...</div>
+    <div class="sheet-actions">
+      <button class="btn btn-secondary" onclick="closeSheet('sheetCatalogo')">Cerrar</button>
     </div>
   </div>
 </div>
@@ -1126,7 +1175,8 @@ function addProductRow(producto){
       <input class="product-name-input" placeholder="Ej: Maceta hexagonal" value="${producto ? escapeAttr(producto.nombre) : ''}" oninput="recalcTotal()">
       <div class="product-row-line2">
         <input class="product-qty-input" type="number" min="1" placeholder="Cant." value="${producto ? producto.cantidad : 1}" oninput="recalcTotal()">
-        <input class="product-price-input" type="number" min="0" inputmode="decimal" placeholder="Precio unitario" value="${producto ? producto.precio : ''}" oninput="recalcTotal()">
+        <input class="product-price-input" type="number" min="0" inputmode="decimal" placeholder="Precio unitario" value="${producto && producto.precio != null ? producto.precio : ''}" oninput="recalcTotal()">
+        <input class="product-days-input" type="number" min="0" inputmode="decimal" title="Días de impresión" placeholder="Días" value="${producto && producto.diasImpresion != null ? producto.diasImpresion : ''}">
       </div>
     </div>
     <button type="button" class="remove-product-btn" onclick="removeProductRow('${rowId}')">✕</button>
@@ -1144,7 +1194,8 @@ function leerProductosDelForm(){
     const nombre = row.querySelector('.product-name-input').value.trim();
     const cantidad = Number(row.querySelector('.product-qty-input').value) || 1;
     const precio = Number(row.querySelector('.product-price-input').value) || 0;
-    return { id: uid(), nombre, cantidad, precio };
+    const diasImpresion = Number(row.querySelector('.product-days-input').value) || 0;
+    return { id: uid(), nombre, cantidad, precio, diasImpresion };
   }).filter(p => p.nombre);
 }
 function recalcTotal(){
@@ -1152,6 +1203,72 @@ function recalcTotal(){
   document.getElementById('pedidoTotalPreview').textContent = '$' + total.toLocaleString('es-AR');
 }
 function escapeAttr(str){ return (str||'').replace(/"/g,'&quot;'); }
+
+/* ---------- Elegir producto del catálogo ---------- */
+let catalogoProductosCache = null;
+async function abrirCatalogoPicker(){
+  document.getElementById('catalogoPickBuscador').value = '';
+  document.getElementById('catalogoPickList').innerHTML = 'Cargando catálogo...';
+  openSheet('sheetCatalogo');
+  try{
+    await cargarFirebase();
+    const snap = await fbSdk.getDocs(fbSdk.collection(fbDb, 'productos'));
+    catalogoProductosCache = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    renderCatalogoPicker();
+  }catch(e){
+    console.warn(e);
+    document.getElementById('catalogoPickList').innerHTML = 'No se pudo cargar el catálogo. Revisá tu conexión.';
+  }
+}
+function renderCatalogoPicker(){
+  const cont = document.getElementById('catalogoPickList');
+  if(!catalogoProductosCache) return;
+  if(catalogoProductosCache.length === 0){
+    cont.innerHTML = 'Todavía no hay productos cargados en el catálogo.';
+    return;
+  }
+  const q = (document.getElementById('catalogoPickBuscador').value || '').toLowerCase().trim();
+  let lista = catalogoProductosCache;
+  if(q){
+    lista = lista.filter(p =>
+      (p.nombre||'').toLowerCase().includes(q) || (p.categoria||'').toLowerCase().includes(q)
+    );
+  }
+  if(lista.length === 0){
+    cont.innerHTML = 'No hay productos que coincidan con la búsqueda.';
+    return;
+  }
+  const grupos = {};
+  lista.forEach(p => {
+    const cat = (p.categoria||'').trim() || 'Sin categoría';
+    (grupos[cat] = grupos[cat] || []).push(p);
+  });
+  const nombresCats = Object.keys(grupos).sort((a,b)=>{
+    if(a === 'Sin categoría') return 1;
+    if(b === 'Sin categoría') return -1;
+    return a.localeCompare(b, 'es');
+  });
+  cont.innerHTML = nombresCats.map(cat => {
+    const items = grupos[cat].sort((a,b)=> (a.nombre||'').localeCompare(b.nombre||'', 'es'));
+    return `
+      <div class="catalog-pick-cat">${escapeHtml(cat)}</div>
+      ${items.map(p => `
+        <div class="catalog-pick-item" onclick='seleccionarProductoCatalogo(${JSON.stringify(p).replace(/'/g,"&#39;")})'>
+          <div class="catalog-pick-photo">${p.fotoUrl ? `<img src="${escapeAttr(p.fotoUrl)}" onerror="this.parentElement.style.display='none'">` : ''}</div>
+          <div class="catalog-pick-info">
+            <div class="catalog-pick-name">${escapeHtml(p.nombre)}</div>
+            <div class="catalog-pick-meta">$${(Number(p.precio)||0).toLocaleString('es-AR')}${p.diasImpresion ? ' · ' + p.diasImpresion + ' día' + (p.diasImpresion===1?'':'s') : ''}</div>
+          </div>
+        </div>
+      `).join('')}
+    `;
+  }).join('');
+}
+function seleccionarProductoCatalogo(p){
+  addProductRow({ nombre: p.nombre, cantidad: 1, precio: Number(p.precio)||0, diasImpresion: Number(p.diasImpresion)||0 });
+  closeSheet('sheetCatalogo');
+}
+
 
 function openPedidoForm(id){
   document.getElementById('pedidoSheetTitle').textContent = id ? 'Editar pedido' : 'Nuevo pedido';
