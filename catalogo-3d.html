@@ -187,6 +187,21 @@
 
   .sync-note{ text-align:center; color: var(--ink-dim); font-size:11px; margin: 10px 0 0; font-family:'JetBrains Mono',monospace; }
 
+  .font-size-control{
+    display:flex; align-items:center; justify-content:space-between;
+    background: var(--surface-2); border:1px solid var(--border); border-radius:12px;
+    padding: 12px 14px; margin-bottom: 4px;
+  }
+  .field-label-inline{ font-size:14px; font-weight:600; }
+  .font-size-buttons{ display:flex; align-items:center; gap:10px; }
+  .fs-btn{
+    width:34px; height:34px; border-radius:9px;
+    background: var(--bg); border:1px solid var(--border); color: var(--ink);
+    font-size:14px; font-weight:700; cursor:pointer;
+  }
+  .fs-btn:active{ background: var(--surface); }
+  .fs-value{ font-size:12.5px; color: var(--ink-dim); min-width:38px; text-align:center; }
+
   /* ---------- Galería de fotos en el formulario de edición ---------- */
   .foto-galeria-edit{ display:flex; flex-wrap:wrap; gap:8px; margin-top:10px; }
   .foto-thumb-edit{
@@ -298,6 +313,7 @@
       <h1><span class="dot"></span>Catálogo — Taller 3D</h1>
       <div class="sub" id="subtitulo">Productos y precios</div>
     </div>
+    <button class="lock-btn" id="fontSizeBtn" aria-label="Tamaño de letra" title="Tamaño de letra" onclick="openSheet('sheetFontSize')" style="font-size:13px;font-weight:700;">Aa</button>
     <button class="lock-btn" id="lockBtn" onclick="onLockBtnClick()">🔒</button>
   </div>
   <div class="search-wrap">
@@ -316,6 +332,25 @@
   <span id="footerLocked">Catálogo · <button onclick="abrirClaveEditor()">modo edición</button></span>
   <span id="footerUnlocked" style="display:none;">Modo edición activo · <button onclick="abrirConfigGithub()">subida de fotos</button> · <button onclick="bloquearEditor()">bloquear este dispositivo</button></span>
 </footer>
+
+<!-- Sheet: tamaño de letra -->
+<div class="sheet-backdrop" id="sheetFontSize">
+  <div class="sheet">
+    <div class="sheet-handle"></div>
+    <h3>Tamaño de letra</h3>
+    <div class="font-size-control">
+      <span class="field-label-inline">Tamaño de letra</span>
+      <div class="font-size-buttons">
+        <button class="fs-btn" onclick="ajustarFuenteCatalogo(-10)">A−</button>
+        <span class="fs-value mono" id="fsValueCatalogo">100%</span>
+        <button class="fs-btn" onclick="ajustarFuenteCatalogo(10)">A+</button>
+      </div>
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-primary" onclick="closeSheet('sheetFontSize')">Listo</button>
+    </div>
+  </div>
+</div>
 
 <!-- Sheet: clave de edición -->
 <div class="sheet-backdrop" id="sheetClave">
@@ -369,8 +404,8 @@
     <div class="field">
       <label>Disponibilidad</label>
       <select id="pDisponibilidad">
-        <option value="inmediato">Hecho al momento (hay stock)</option>
         <option value="pedido">Bajo pedido</option>
+        <option value="inmediato">Hecho al momento (hay stock)</option>
       </select>
     </div>
     <div class="field">
@@ -807,8 +842,11 @@ function renderCatalogo(){
 
   const grupos = {};
   lista.forEach(p => {
-    const cats = categoriasDe(p);
-    const catList = cats.length ? cats : ['Sin categoría'];
+    // Si hay un filtro de categoría activo, ya sabemos que el producto
+    // pertenece a esa categoría (se filtró arriba): lo agrupamos SOLO ahí,
+    // no en todas sus categorías, para no duplicar la sección de otra
+    // categoría a la que también pertenezca.
+    const catList = filtroCategoria ? [filtroCategoria] : (categoriasDe(p).length ? categoriasDe(p) : ['Sin categoría']);
     catList.forEach(cat => {
       (grupos[cat] = grupos[cat] || []).push(p);
     });
@@ -840,7 +878,7 @@ function primeraFoto(p){
 }
 
 function dispChipHtml(p){
-  const disp = p.disponibilidad || 'inmediato';
+  const disp = p.disponibilidad || 'pedido';
   return disp === 'pedido'
     ? `<span class="disp-chip disp-pedido">Bajo pedido</span>`
     : `<span class="disp-chip disp-inmediato">Al momento</span>`;
@@ -1188,7 +1226,7 @@ window.abrirProductoForm = function(id){
   renderCategoriasEdit();
   document.getElementById('pPrecio').value = p?.precio ?? '';
   document.getElementById('pDias').value = p?.diasImpresion ?? '';
-  document.getElementById('pDisponibilidad').value = p?.disponibilidad || 'inmediato';
+  document.getElementById('pDisponibilidad').value = p?.disponibilidad || 'pedido';
   document.getElementById('pDescripcion').value = p?.descripcion || '';
   document.getElementById('pFotoUrlManual').value = '';
   fotosEdit = (p?.fotos && p.fotos.length) ? [...p.fotos] : (p?.fotoUrl ? [p.fotoUrl] : []);
@@ -1244,8 +1282,23 @@ window.eliminarProducto = async function(){
   }
 };
 
+/* ---------- Tamaño de letra (para cualquiera que abra el catálogo, no solo editor) ---------- */
+const FS_KEY = STORAGE_PREFIX + 'fontScale';
+let fontScaleCatalogo = Number(localStorage.getItem(FS_KEY)) || 100;
+function aplicarFuenteCatalogo(){
+  document.body.style.zoom = (fontScaleCatalogo / 100);
+  const el = document.getElementById('fsValueCatalogo');
+  if(el) el.textContent = fontScaleCatalogo + '%';
+}
+window.ajustarFuenteCatalogo = function(delta){
+  fontScaleCatalogo = Math.min(150, Math.max(80, fontScaleCatalogo + delta));
+  localStorage.setItem(FS_KEY, fontScaleCatalogo);
+  aplicarFuenteCatalogo();
+};
+
 /* ---------- Inicio ---------- */
 actualizarUIModo();
+aplicarFuenteCatalogo();
 renderCatalogo();
 cargarFirebase();
 </script>
