@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<title>Catálogo — Taller 3D</title>
+<title>Catálogo — Ludiverso 3D</title>
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxOTIgMTkyIj4KPHJlY3Qgd2lkdGg9IjE5MiIgaGVpZ2h0PSIxOTIiIHJ4PSI0MCIgZmlsbD0iIzFiMWQyMSIvPgo8ZyBzdHJva2U9IiNmZjdhMjkiIHN0cm9rZS13aWR0aD0iNyIgZmlsbD0ibm9uZSI+CjxlbGxpcHNlIGN4PSI5NiIgY3k9IjY0IiByeD0iNDgiIHJ5PSIxNyIvPgo8ZWxsaXBzZSBjeD0iOTYiIGN5PSI4OCIgcng9IjQ4IiByeT0iMTciLz4KPGVsbGlwc2UgY3g9Ijk2IiBjeT0iMTEyIiByeD0iNDgiIHJ5PSIxNyIvPgo8L2c+Cjx0ZXh0IHg9Ijk2IiB5PSIxNjAiIGZvbnQtZmFtaWx5PSJtb25vc3BhY2Usc2Fucy1zZXJpZiIgZm9udC1zaXplPSIzNiIgZm9udC13ZWlnaHQ9IjcwMCIgZmlsbD0iI2VlZjBmMiIgdGV4dC1hbmNob3I9Im1pZGRsZSI+M0Q8L3RleHQ+Cjwvc3ZnPg==">
 <meta name="theme-color" content="#1b1d21">
 <script>
@@ -27,6 +27,7 @@
     --accent: #ff7a29;
     --accent-ink: #1b1d21;
   }
+  html{ font-size: 16px; }
   *{ box-sizing:border-box; }
   body{
     margin:0; background: var(--bg); color: var(--ink);
@@ -45,22 +46,22 @@
   }
   .topbar-row{ display:flex; align-items:center; justify-content:space-between; gap:10px; }
   .topbar h1{
-    margin:0; font-size:19px; font-weight:700; letter-spacing:.2px;
+    margin:0; font-size:1.1875rem; font-weight:700; letter-spacing:.2px;
     display:flex; align-items:center; gap:8px;
   }
   .topbar h1 .dot{ width:8px; height:8px; border-radius:50%; background: var(--accent); }
-  .topbar .sub{ color: var(--ink-dim); font-size:12.5px; margin-top:3px; }
+  .topbar .sub{ color: var(--ink-dim); font-size:0.7812rem; margin-top:3px; }
   .lock-btn{
     background: var(--surface-2); border: 1px solid var(--border); color: var(--ink-dim);
     width:38px; height:38px; border-radius:12px; display:flex; align-items:center; justify-content:center;
-    cursor:pointer; flex:none; font-size:16px;
+    cursor:pointer; flex:none; font-size:1rem;
   }
   .lock-btn.unlocked{ color: var(--accent); border-color: rgba(255,122,41,.35); }
 
   .cat-filter-wrap{ display:flex; gap:6px; overflow-x:auto; margin-top:10px; padding-bottom:2px; scrollbar-width:none; }
   .cat-filter-wrap::-webkit-scrollbar{ display:none; }
   .cat-filter-chip{
-    flex-shrink:0; font-family:'JetBrains Mono', monospace; font-size:11.5px;
+    flex-shrink:0; font-family:'JetBrains Mono', monospace; font-size:0.7188rem;
     color: var(--ink-dim); background: var(--surface-2); border:1px solid var(--border);
     border-radius:20px; padding:6px 12px; cursor:pointer; white-space:nowrap;
   }
@@ -69,7 +70,7 @@
   .search-wrap{ margin-top:12px; }
   .search-wrap input{
     width:100%; background: var(--surface-2); border:1px solid var(--border); border-radius:12px;
-    padding:10px 12px; color: var(--ink); font-family:inherit; font-size:14px;
+    padding:10px 12px; color: var(--ink); font-family:inherit; font-size:0.875rem;
   }
   .search-wrap input::placeholder{ color: var(--ink-dim); }
 
@@ -77,11 +78,11 @@
 
   .cat-section{ margin-bottom: 26px; }
   .cat-title{
-    font-size:13px; font-weight:700; text-transform:uppercase; letter-spacing:.6px;
+    font-size:0.8125rem; font-weight:700; text-transform:uppercase; letter-spacing:.6px;
     color: var(--accent); margin: 0 0 10px 2px;
     display:flex; align-items:center; gap:8px;
   }
-  .cat-title .count{ color: var(--ink-dim); font-weight:500; text-transform:none; letter-spacing:0; font-family:'JetBrains Mono',monospace; font-size:12px; }
+  .cat-title .count{ color: var(--ink-dim); font-weight:500; text-transform:none; letter-spacing:0; font-family:'JetBrains Mono',monospace; font-size:0.75rem; }
 
   .product-grid{
     display:grid; grid-template-columns: repeat(auto-fill, minmax(148px, 1fr)); gap:12px;
@@ -96,14 +97,14 @@
     display:flex; align-items:center; justify-content:center; overflow:hidden;
   }
   .product-photo img{ width:100%; height:100%; object-fit:cover; display:block; }
-  .product-photo .placeholder{ color: var(--ink-dim); font-size:11px; text-align:center; padding:8px; }
+  .product-photo .placeholder{ color: var(--ink-dim); font-size:0.6875rem; text-align:center; padding:8px; }
   .product-info{ padding:11px 12px 13px; display:flex; flex-direction:column; gap:5px; }
-  .product-name{ font-size:13.5px; font-weight:600; line-height:1.25; }
+  .product-name{ font-size:0.8438rem; font-weight:600; line-height:1.25; }
   .product-price-row{ display:flex; justify-content:space-between; align-items:baseline; gap:6px; }
-  .product-price{ font-family:'JetBrains Mono',monospace; font-weight:600; color: var(--ink); font-size:14px; }
-  .product-days{ font-size:10.5px; color: var(--ink-dim); font-family:'JetBrains Mono',monospace; white-space:nowrap; }
+  .product-price{ font-family:'JetBrains Mono',monospace; font-weight:600; color: var(--ink); font-size:0.875rem; }
+  .product-days{ font-size:0.6562rem; color: var(--ink-dim); font-family:'JetBrains Mono',monospace; white-space:nowrap; }
   .disp-chip{
-    display:inline-flex; align-items:center; gap:5px; font-size:11px; font-weight:500;
+    display:inline-flex; align-items:center; gap:5px; font-size:0.6875rem; font-weight:500;
     padding:0; margin-top:1px;
   }
   .disp-chip::before{ content:""; width:6px; height:6px; border-radius:50%; flex-shrink:0; }
@@ -118,27 +119,27 @@
   .mini-btn{
     width:28px; height:28px; border-radius:9px; border:1px solid var(--border);
     background: rgba(27,29,33,.78); backdrop-filter: blur(2px);
-    color: var(--ink); display:flex; align-items:center; justify-content:center; font-size:13px; cursor:pointer;
+    color: var(--ink); display:flex; align-items:center; justify-content:center; font-size:0.8125rem; cursor:pointer;
   }
-  .mini-btn-sm{ width:22px; height:22px; font-size:10px; border-radius:7px; }
+  .mini-btn-sm{ width:22px; height:22px; font-size:0.625rem; border-radius:7px; }
 
   .empty-state{
-    text-align:center; color: var(--ink-dim); padding: 60px 20px 30px; font-size:14px; line-height:1.6;
+    text-align:center; color: var(--ink-dim); padding: 60px 20px 30px; font-size:0.875rem; line-height:1.6;
   }
-  .empty-state .big{ font-size:34px; margin-bottom:10px; }
+  .empty-state .big{ font-size:2.125rem; margin-bottom:10px; }
 
   .fab{
     position:fixed; right:18px; bottom:22px; z-index:25;
     width:56px; height:56px; border-radius:18px; background: var(--accent); color: var(--accent-ink);
-    border:none; font-size:26px; font-weight:700; display:flex; align-items:center; justify-content:center;
+    border:none; font-size:1.625rem; font-weight:700; display:flex; align-items:center; justify-content:center;
     box-shadow: 0 10px 24px rgba(255,122,41,.35); cursor:pointer;
   }
 
   footer.editor-footer{
-    text-align:center; padding: 24px 16px 8px; color: var(--ink-dim); font-size:11.5px;
+    text-align:center; padding: 24px 16px 8px; color: var(--ink-dim); font-size:0.7188rem;
   }
   footer.editor-footer button{
-    background:none; border:none; color: var(--ink-dim); text-decoration:underline; font-size:11.5px; cursor:pointer; font-family:inherit;
+    background:none; border:none; color: var(--ink-dim); text-decoration:underline; font-size:0.7188rem; cursor:pointer; font-family:inherit;
   }
 
   /* ---------- Bottom sheets ---------- */
@@ -153,12 +154,12 @@
     -webkit-overflow-scrolling: touch; touch-action: pan-y;
   }
   .sheet-handle{ width:38px; height:4px; background: var(--border); border-radius:3px; margin: 6px auto 14px; }
-  .sheet h3{ margin: 0 0 16px; font-size:17px; }
+  .sheet h3{ margin: 0 0 16px; font-size:1.0625rem; }
   .field{ margin-bottom:14px; }
-  .field label{ display:block; font-size:12px; color: var(--ink-dim); margin-bottom:5px; }
+  .field label{ display:block; font-size:0.75rem; color: var(--ink-dim); margin-bottom:5px; }
   .field input, .field textarea{
     width:100%; background: var(--surface-2); border:1px solid var(--border); border-radius:11px;
-    padding:10px 12px; color: var(--ink); font-family:inherit; font-size:14.5px;
+    padding:10px 12px; color: var(--ink); font-family:inherit; font-size:0.9062rem;
     box-sizing: border-box;
   }
   .field textarea{
@@ -167,40 +168,40 @@
   }
   .field-row{ display:flex; gap:10px; }
   .field-row .field{ flex:1; }
-  .field-hint{ font-size:11px; color: var(--ink-dim); margin-top:5px; line-height:1.5; }
+  .field-hint{ font-size:0.6875rem; color: var(--ink-dim); margin-top:5px; line-height:1.5; }
   .foto-preview{
     margin-top:8px; width:84px; height:84px; border-radius:12px; overflow:hidden; background: var(--surface-2);
     display:flex; align-items:center; justify-content:center; border:1px solid var(--border);
   }
   .foto-preview img{ width:100%; height:100%; object-fit:cover; }
-  .foto-preview .ph{ color: var(--ink-dim); font-size:10px; text-align:center; }
+  .foto-preview .ph{ color: var(--ink-dim); font-size:0.625rem; text-align:center; }
 
   .btn{
-    width:100%; padding:13px; border-radius:12px; border:none; font-family:inherit; font-size:14.5px;
+    width:100%; padding:13px; border-radius:12px; border:none; font-family:inherit; font-size:0.9062rem;
     font-weight:600; cursor:pointer;
   }
   .btn-primary{ background: var(--accent); color: var(--accent-ink); }
   .btn-secondary{ background: var(--surface-2); color: var(--ink); border:1px solid var(--border); }
   .btn-danger{ background: rgba(248,113,113,.12); color:#f87171; border:1px solid rgba(248,113,113,.3); }
   .btn-row{ display:flex; flex-direction:column; gap:10px; margin-top:6px; }
-  .form-error{ color:#f87171; font-size:12.5px; margin: -6px 0 12px; min-height:14px; }
+  .form-error{ color:#f87171; font-size:0.7812rem; margin: -6px 0 12px; min-height:14px; }
 
-  .sync-note{ text-align:center; color: var(--ink-dim); font-size:11px; margin: 10px 0 0; font-family:'JetBrains Mono',monospace; }
+  .sync-note{ text-align:center; color: var(--ink-dim); font-size:0.6875rem; margin: 10px 0 0; font-family:'JetBrains Mono',monospace; }
 
   .font-size-control{
     display:flex; align-items:center; justify-content:space-between;
     background: var(--surface-2); border:1px solid var(--border); border-radius:12px;
     padding: 12px 14px; margin-bottom: 4px;
   }
-  .field-label-inline{ font-size:14px; font-weight:600; }
+  .field-label-inline{ font-size:0.875rem; font-weight:600; }
   .font-size-buttons{ display:flex; align-items:center; gap:10px; }
   .fs-btn{
     width:34px; height:34px; border-radius:9px;
     background: var(--bg); border:1px solid var(--border); color: var(--ink);
-    font-size:14px; font-weight:700; cursor:pointer;
+    font-size:0.875rem; font-weight:700; cursor:pointer;
   }
   .fs-btn:active{ background: var(--surface); }
-  .fs-value{ font-size:12.5px; color: var(--ink-dim); min-width:38px; text-align:center; }
+  .fs-value{ font-size:0.7812rem; color: var(--ink-dim); min-width:38px; text-align:center; }
 
   /* ---------- Galería de fotos en el formulario de edición ---------- */
   .foto-galeria-edit{ display:flex; flex-wrap:wrap; gap:8px; margin-top:10px; }
@@ -211,7 +212,7 @@
   .foto-thumb-edit img{ width:100%; height:100%; object-fit:cover; display:block; }
   .foto-thumb-remove{
     position:absolute; top:2px; right:2px; width:19px; height:19px; border-radius:50%;
-    background: rgba(20,21,24,.85); color:#fff; border:none; font-size:10px; line-height:1;
+    background: rgba(20,21,24,.85); color:#fff; border:none; font-size:0.625rem; line-height:1;
     display:flex; align-items:center; justify-content:center; cursor:pointer;
   }
   .foto-thumb-reorder{
@@ -219,12 +220,12 @@
   }
   .foto-thumb-reorder button{
     width:16px; height:14px; border-radius:4px; border:none; background: rgba(20,21,24,.85);
-    color:#fff; font-size:9px; line-height:1; display:flex; align-items:center; justify-content:center; cursor:pointer; padding:0;
+    color:#fff; font-size:0.5625rem; line-height:1; display:flex; align-items:center; justify-content:center; cursor:pointer; padding:0;
   }
   .foto-thumb-reorder button:disabled{ opacity:.3; cursor:default; }
   .foto-thumb-tag{
     position:absolute; bottom:0; left:0; right:0; background: rgba(255,122,41,.9); color: var(--accent-ink);
-    font-size:8.5px; font-weight:700; text-align:center; padding:1.5px 0; text-transform:uppercase; letter-spacing:.03em;
+    font-size:0.5312rem; font-weight:700; text-align:center; padding:1.5px 0; text-transform:uppercase; letter-spacing:.03em;
   }
 
   /* ---------- Categorías múltiples en el formulario de edición ---------- */
@@ -232,11 +233,11 @@
   .categoria-chip-edit{
     display:flex; align-items:center; gap:6px;
     background: var(--surface-2); border:1px solid var(--border); border-radius:20px;
-    padding:5px 6px 5px 12px; font-size:12.5px;
+    padding:5px 6px 5px 12px; font-size:0.7812rem;
   }
   .categoria-chip-edit button{
     width:18px; height:18px; border-radius:50%; border:none; background: rgba(255,255,255,.08);
-    color: var(--ink-dim); font-size:10px; line-height:1;
+    color: var(--ink-dim); font-size:0.625rem; line-height:1;
     display:flex; align-items:center; justify-content:center; cursor:pointer; padding:0; flex:none;
   }
   .categoria-chip-edit button:active{ background: rgba(255,255,255,.16); }
@@ -263,11 +264,11 @@
     padding:16px 18px 4px; overflow-y:auto; -webkit-overflow-scrolling:touch;
     flex:1 1 auto; min-height:0;
   }
-  .detalle-cat{ font-size:11px; text-transform:uppercase; letter-spacing:.06em; color: var(--accent); font-weight:700; }
-  .detalle-nombre{ margin:3px 0 8px; font-size:18px; }
-  .detalle-precio{ font-size:21px; font-weight:700; color: var(--accent); }
-  .detalle-dias{ font-size:12.5px; color: var(--ink-dim); margin-top:3px; font-family:'JetBrains Mono',monospace; }
-  .detalle-desc{ font-size:13.5px; line-height:1.65; color: var(--ink); margin-top:14px; white-space:pre-wrap; word-wrap:break-word; overflow-wrap:break-word; }  .sheet-backdrop#sheetDetalle{ align-items:flex-start; }
+  .detalle-cat{ font-size:0.6875rem; text-transform:uppercase; letter-spacing:.06em; color: var(--accent); font-weight:700; }
+  .detalle-nombre{ margin:3px 0 8px; font-size:1.125rem; }
+  .detalle-precio{ font-size:1.3125rem; font-weight:700; color: var(--accent); }
+  .detalle-dias{ font-size:0.7812rem; color: var(--ink-dim); margin-top:3px; font-family:'JetBrains Mono',monospace; }
+  .detalle-desc{ font-size:0.8438rem; line-height:1.65; color: var(--ink); margin-top:14px; white-space:pre-wrap; word-wrap:break-word; overflow-wrap:break-word; }  .sheet-backdrop#sheetDetalle{ align-items:flex-start; }
 
   .img-zoom-overlay{
     display:none; position:fixed; inset:0; background: rgba(0,0,0,.92); z-index:80;
@@ -281,7 +282,7 @@
   .img-zoom-close{
     position:absolute; top:calc(14px + env(safe-area-inset-top)); right:14px; z-index:81;
     width:38px; height:38px; border-radius:50%; border:none; background: rgba(255,255,255,.14);
-    color:#fff; font-size:16px; display:flex; align-items:center; justify-content:center; cursor:pointer;
+    color:#fff; font-size:1rem; display:flex; align-items:center; justify-content:center; cursor:pointer;
   }
   #sheetDetalle .sheet{ border-radius:0 0 20px 20px; position:relative; }
 
@@ -289,7 +290,7 @@
     position:absolute; top:calc(12px + env(safe-area-inset-top)); right:12px; z-index:6;
     width:34px; height:34px; border-radius:50%; border:none;
     background: rgba(27,29,33,.72); backdrop-filter: blur(2px);
-    color:#fff; font-size:15px; line-height:1;
+    color:#fff; font-size:0.9375rem; line-height:1;
     display:flex; align-items:center; justify-content:center; cursor:pointer;
   }
   .detalle-close-btn:active{ background: rgba(27,29,33,.9); }
@@ -310,10 +311,10 @@
 <div class="topbar">
   <div class="topbar-row">
     <div>
-      <h1><span class="dot"></span>Catálogo — Taller 3D</h1>
+      <h1><span class="dot"></span>Catálogo — Ludiverso 3D</h1>
       <div class="sub" id="subtitulo">Productos y precios</div>
     </div>
-    <button class="lock-btn" id="fontSizeBtn" aria-label="Tamaño de letra" title="Tamaño de letra" onclick="openSheet('sheetFontSize')" style="font-size:13px;font-weight:700;">Aa</button>
+    <button class="lock-btn" id="fontSizeBtn" aria-label="Tamaño de letra" title="Tamaño de letra" onclick="openSheet('sheetFontSize')" style="font-size:0.8125rem;font-weight:700;">Aa</button>
     <button class="lock-btn" id="lockBtn" onclick="onLockBtnClick()">🔒</button>
   </div>
   <div class="search-wrap">
@@ -444,7 +445,7 @@
   <div class="sheet">
     <div class="sheet-handle"></div>
     <h3>Subida de fotos</h3>
-    <p style="font-size:12.5px;color:var(--ink-dim);margin:-8px 0 16px;line-height:1.5;">
+    <p style="font-size:0.7812rem;color:var(--ink-dim);margin:-8px 0 16px;line-height:1.5;">
       Con esto podés subir la foto directo desde el celular al repositorio, sin usar la web de GitHub.
       El token queda guardado solo en este dispositivo.
     </p>
@@ -454,7 +455,7 @@
       <div class="field-hint">Fine-grained, limitado al repo, con permiso "Contents: Read and write".</div>
     </div>
     <div class="form-error" id="ghTokenError"></div>
-    <p id="ghTokenStatus" style="font-size:12.5px;color:var(--ink-dim);margin:0 0 4px;"></p>
+    <p id="ghTokenStatus" style="font-size:0.7812rem;color:var(--ink-dim);margin:0 0 4px;"></p>
     <div class="btn-row">
       <button class="btn btn-primary" onclick="guardarTokenGithub()">Guardar y probar</button>
       <button class="btn btn-danger" id="btnQuitarToken" style="display:none;" onclick="quitarTokenGithub()">Quitar token de este dispositivo</button>
@@ -497,7 +498,7 @@
 
 <script type="module">
 /* =========================================================
-   Catálogo de productos — Taller 3D
+   Catálogo de productos — Ludiverso 3D
    ---------------------------------------------------------
    Archivo independiente de gestion-3d.html, mismo backend
    de Firebase (proyecto agenda-clientes-3s), colección nueva
@@ -1153,7 +1154,7 @@ let categoriasEdit = [];
 function renderCategoriasEdit(){
   const cont = document.getElementById('categoriasChipsEdit');
   if(!categoriasEdit.length){
-    cont.innerHTML = '<span style="font-size:11px;color:var(--ink-dim);">Sin categorías todavía (va a listarse en "Sin categoría").</span>';
+    cont.innerHTML = '<span style="font-size:0.6875rem;color:var(--ink-dim);">Sin categorías todavía (va a listarse en "Sin categoría").</span>';
     return;
   }
   cont.innerHTML = categoriasEdit.map((c, i) => `
@@ -1182,7 +1183,7 @@ let fotosEdit = [];
 function renderFotosEdit(){
   const cont = document.getElementById('fotoGaleriaEdit');
   if(!fotosEdit.length){
-    cont.innerHTML = '<span style="font-size:11px;color:var(--ink-dim);">Todavía no hay fotos cargadas.</span>';
+    cont.innerHTML = '<span style="font-size:0.6875rem;color:var(--ink-dim);">Todavía no hay fotos cargadas.</span>';
     return;
   }
   cont.innerHTML = fotosEdit.map((url, i) => `
@@ -1283,10 +1284,15 @@ window.eliminarProducto = async function(){
 };
 
 /* ---------- Tamaño de letra (para cualquiera que abra el catálogo, no solo editor) ---------- */
+// Escala el font-size raíz del documento (todos los tamaños de texto están
+// en rem, relativos a esto). A propósito NO se usa "zoom" ni "transform"
+// sobre el body: eso rompía el scroll vertical dentro de los sheets
+// (max-height en vh + overflow-y:auto dejaba de funcionar bien al escalar
+// toda la página). Escalando solo el font-size, el scroll queda intacto.
 const FS_KEY = STORAGE_PREFIX + 'fontScale';
 let fontScaleCatalogo = Number(localStorage.getItem(FS_KEY)) || 100;
 function aplicarFuenteCatalogo(){
-  document.body.style.zoom = (fontScaleCatalogo / 100);
+  document.documentElement.style.fontSize = (16 * fontScaleCatalogo / 100) + 'px';
   const el = document.getElementById('fsValueCatalogo');
   if(el) el.textContent = fontScaleCatalogo + '%';
 }

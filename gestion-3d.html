@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<title>Taller 3D — Gestión</title>
+<title>Ludiverso 3D — Gestión</title>
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxOTIgMTkyIj4KPHJlY3Qgd2lkdGg9IjE5MiIgaGVpZ2h0PSIxOTIiIHJ4PSI0MCIgZmlsbD0iIzFiMWQyMSIvPgo8ZyBzdHJva2U9IiNmZjdhMjkiIHN0cm9rZS13aWR0aD0iNyIgZmlsbD0ibm9uZSI+CjxlbGxpcHNlIGN4PSI5NiIgY3k9IjY0IiByeD0iNDgiIHJ5PSIxNyIvPgo8ZWxsaXBzZSBjeD0iOTYiIGN5PSI4OCIgcng9IjQ4IiByeT0iMTciLz4KPGVsbGlwc2UgY3g9Ijk2IiBjeT0iMTEyIiByeD0iNDgiIHJ5PSIxNyIvPgo8L2c+Cjx0ZXh0IHg9Ijk2IiB5PSIxNjAiIGZvbnQtZmFtaWx5PSJtb25vc3BhY2Usc2Fucy1zZXJpZiIgZm9udC1zaXplPSIzNiIgZm9udC13ZWlnaHQ9IjcwMCIgZmlsbD0iI2VlZjBmMiIgdGV4dC1hbmNob3I9Im1pZGRsZSI+M0Q8L3RleHQ+Cjwvc3ZnPg==">
 <link rel="apple-touch-icon" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxOTIgMTkyIj4KPHJlY3Qgd2lkdGg9IjE5MiIgaGVpZ2h0PSIxOTIiIHJ4PSI0MCIgZmlsbD0iIzFiMWQyMSIvPgo8ZyBzdHJva2U9IiNmZjdhMjkiIHN0cm9rZS13aWR0aD0iNyIgZmlsbD0ibm9uZSI+CjxlbGxpcHNlIGN4PSI5NiIgY3k9IjY0IiByeD0iNDgiIHJ5PSIxNyIvPgo8ZWxsaXBzZSBjeD0iOTYiIGN5PSI4OCIgcng9IjQ4IiByeT0iMTciLz4KPGVsbGlwc2UgY3g9Ijk2IiBjeT0iMTEyIiByeD0iNDgiIHJ5PSIxNyIvPgo8L2c+Cjx0ZXh0IHg9Ijk2IiB5PSIxNjAiIGZvbnQtZmFtaWx5PSJtb25vc3BhY2Usc2Fucy1zZXJpZiIgZm9udC1zaXplPSIzNiIgZm9udC13ZWlnaHQ9IjcwMCIgZmlsbD0iI2VlZjBmMiIgdGV4dC1hbmNob3I9Im1pZGRsZSI+M0Q8L3RleHQ+Cjwvc3ZnPg==">
 <meta name="theme-color" content="#1b1d21">
@@ -519,7 +519,7 @@
 <body>
 
 <header>
-  <p class="eyebrow mono">Taller de impresión 3D</p>
+  <p class="eyebrow mono">Ludiverso 3D</p>
   <h1 id="headerTitle">Clientes</h1>
   <p class="tagline" id="headerTag">Gestioná tu negocio desde el celular</p>
   <div class="header-actions">
@@ -2344,7 +2344,7 @@ window.compartirCatalogoGenerico = async function(){
   const texto = 'Mirá nuestro catálogo de productos 3D:';
   if(navigator.share){
     try{
-      await navigator.share({ title: 'Catálogo — Taller 3D', text: texto, url: CATALOGO_URL });
+      await navigator.share({ title: 'Catálogo — Ludiverso 3D', text: texto, url: CATALOGO_URL });
     }catch(e){ /* el usuario canceló el share, no hacer nada */ }
   }else{
     try{
