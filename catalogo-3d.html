@@ -58,8 +58,16 @@
   }
   .lock-btn.unlocked{ color: var(--accent); border-color: rgba(255,122,41,.35); }
 
-  .cat-filter-wrap{ display:flex; gap:6px; overflow-x:auto; margin-top:10px; padding-bottom:2px; scrollbar-width:none; }
+  .cat-filter-outer{ position:relative; margin-top:10px; }
+  .cat-filter-wrap{ display:flex; gap:6px; overflow-x:auto; margin-top:0; padding-bottom:2px; scrollbar-width:none; }
   .cat-filter-wrap::-webkit-scrollbar{ display:none; }
+  .cat-filter-arrow{
+    position:absolute; top:0; right:0; bottom:2px; width:30px;
+    display:flex; align-items:center; justify-content:flex-end;
+    border:none; cursor:pointer; padding-right:2px;
+    background: linear-gradient(to right, rgba(27,29,33,0), var(--bg) 60%);
+    color: var(--accent); font-size:1.25rem; font-weight:700; line-height:1;
+  }
   .cat-filter-chip{
     flex-shrink:0; font-family:'JetBrains Mono', monospace; font-size:0.7188rem;
     color: var(--ink-dim); background: var(--surface-2); border:1px solid var(--border);
@@ -67,7 +75,9 @@
   }
   .cat-filter-chip.active{ color: var(--accent-ink); background: var(--accent); border-color: var(--accent); }
 
-  .search-wrap{ margin-top:12px; }
+  .search-wrap{ display:none; margin-top:0; }
+  .search-wrap.active{ display:block; margin-top:12px; animation: searchOpen .15s ease; }
+  @keyframes searchOpen{ from{ opacity:0; transform:translateY(-4px); } to{ opacity:1; transform:none; } }
   .search-wrap input{
     width:100%; background: var(--surface-2); border:1px solid var(--border); border-radius:12px;
     padding:10px 12px; color: var(--ink); font-family:inherit; font-size:0.875rem;
@@ -314,13 +324,17 @@
       <h1><span class="dot"></span>Catálogo — Ludiverso 3D</h1>
       <div class="sub" id="subtitulo">Productos y precios</div>
     </div>
+    <button class="lock-btn" id="searchToggleBtn" aria-label="Buscar producto" title="Buscar producto" onclick="toggleBuscador()">🔍</button>
     <button class="lock-btn" id="fontSizeBtn" aria-label="Tamaño de letra" title="Tamaño de letra" onclick="openSheet('sheetFontSize')" style="font-size:0.8125rem;font-weight:700;">Aa</button>
     <button class="lock-btn" id="lockBtn" onclick="onLockBtnClick()">🔒</button>
   </div>
-  <div class="search-wrap">
+  <div class="search-wrap" id="searchWrap">
     <input id="buscador" placeholder="Buscar producto..." oninput="renderCatalogo()">
   </div>
-  <div class="cat-filter-wrap" id="catFilterBar"></div>
+  <div class="cat-filter-outer" id="catFilterOuter">
+    <div class="cat-filter-wrap" id="catFilterBar"></div>
+    <button type="button" class="cat-filter-arrow" id="catFilterArrow" onclick="scrollCategorias()" aria-label="Ver más categorías" title="Ver más categorías" style="display:none;">›</button>
+  </div>
 </div>
 
 <div class="container" id="contenido">
@@ -730,6 +744,32 @@ window.closeSheet = id => {
   }
 };
 
+/* ---------- Buscador colapsable ---------- */
+// Arranca oculto (solo el botón cuadrado con la lupa) para que la parte de
+// arriba del catálogo pese menos visualmente. Al tocarlo se despliega el
+// campo de texto y se enfoca solo; al volver a tocarlo se cierra y limpia
+// la búsqueda (si había algo escrito, vuelve a mostrar el catálogo entero).
+window.toggleBuscador = function(){
+  const wrap = document.getElementById('searchWrap');
+  const btn = document.getElementById('searchToggleBtn');
+  const input = document.getElementById('buscador');
+  const abierto = wrap.classList.contains('active');
+  if(abierto){
+    wrap.classList.remove('active');
+    btn.textContent = '🔍';
+    btn.classList.remove('unlocked');
+    if(input.value){
+      input.value = '';
+      renderCatalogo();
+    }
+  }else{
+    wrap.classList.add('active');
+    btn.textContent = '✕';
+    btn.classList.add('unlocked');
+    setTimeout(() => input.focus(), 50);
+  }
+};
+
 // Imagen predefinida para productos sin foto cargada (SVG propio, mismo
 // estilo del ícono de la app — capas de impresión 3D en naranja "filamento").
 const DEFAULT_PHOTO = 'data:image/svg+xml;base64,' + btoa(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200">
@@ -797,12 +837,39 @@ function actualizarDatalistCategorias(){
 function renderFiltroCategorias(){
   const el = document.getElementById('catFilterBar');
   const cats = [...new Set(productos.flatMap(categoriasDe))].sort((a,b)=>a.localeCompare(b,'es'));
-  if(cats.length === 0){ el.innerHTML = ''; return; }
+  if(cats.length === 0){
+    el.innerHTML = '';
+    actualizarFlechaCategorias();
+    return;
+  }
   const chips = [{val:'', label:'Todos'}, ...cats.map(c=>({val:c, label:c}))];
   el.innerHTML = chips.map(c => `
     <button type="button" class="cat-filter-chip ${filtroCategoria===c.val?'active':''}" onclick="filtrarPorCategoria('${escapeAttr(c.val)}')">${escapeHtml(c.label)}</button>
   `).join('');
+  // Se recalcula recién en el próximo frame: ahí el navegador ya terminó
+  // de acomodar los chips y scrollWidth/clientWidth quedan bien medidos.
+  requestAnimationFrame(actualizarFlechaCategorias);
 }
+
+// Flechita superpuesta al borde derecho del filtro de categorías: avisa
+// que hay más categorías corriendo hacia ese lado. Se muestra solo si el
+// contenido desborda y todavía no se llegó al final del scroll horizontal;
+// tocarla desliza un tramo hacia la derecha (también se actualiza sola
+// al deslizar con el dedo).
+function actualizarFlechaCategorias(){
+  const wrap = document.getElementById('catFilterBar');
+  const arrow = document.getElementById('catFilterArrow');
+  if(!wrap || !arrow) return;
+  const hayOverflow = wrap.scrollWidth > wrap.clientWidth + 4;
+  const enElFinal = wrap.scrollLeft + wrap.clientWidth >= wrap.scrollWidth - 4;
+  arrow.style.display = (hayOverflow && !enElFinal) ? 'flex' : 'none';
+}
+window.scrollCategorias = function(){
+  const wrap = document.getElementById('catFilterBar');
+  wrap.scrollBy({ left: Math.round(wrap.clientWidth * 0.7), behavior: 'smooth' });
+};
+document.getElementById('catFilterBar').addEventListener('scroll', actualizarFlechaCategorias);
+window.addEventListener('resize', actualizarFlechaCategorias);
 window.filtrarPorCategoria = function(val){
   filtroCategoria = val;
   renderFiltroCategorias();
