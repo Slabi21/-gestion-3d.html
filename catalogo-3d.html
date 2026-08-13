@@ -276,20 +276,30 @@
   .categoria-chip-edit button:active{ background: rgba(255,255,255,.16); }
 
   /* ---------- Detalle ampliado del producto (vista cliente) ---------- */
+  .detalle-galeria-wrap{ position:relative; flex:none; }
   .detalle-galeria{
     display:flex; overflow-x:auto; scroll-snap-type:x mandatory; -webkit-overflow-scrolling:touch;
-    background: var(--surface-2); scrollbar-width:none; flex:none;
+    background: var(--surface-2); scrollbar-width:none;
   }
   .detalle-galeria::-webkit-scrollbar{ display:none; }
   .detalle-galeria img{
     flex:0 0 100%; width:100%; aspect-ratio:1/1; object-fit:cover; scroll-snap-align:center; display:block;
     scroll-snap-stop: always;
   }
+  .detalle-galeria-arrow{
+    position:absolute; top:50%; transform:translateY(-50%); z-index:3;
+    width:34px; height:34px; border-radius:50%; border:none; cursor:pointer;
+    background: rgba(27,29,33,.55); backdrop-filter: blur(2px); color:#fff;
+    display:flex; align-items:center; justify-content:center; font-size:1.25rem; font-weight:700; line-height:1;
+  }
+  .detalle-galeria-arrow:active, .detalle-galeria-arrow:hover{ background: rgba(27,29,33,.82); }
+  .detalle-galeria-arrow-left{ left:10px; }
+  .detalle-galeria-arrow-right{ right:10px; }
   .detalle-dots{
     display:none; justify-content:center; align-items:center; gap:6px; padding:10px 0 0;
   }
   .detalle-dot{
-    width:6px; height:6px; border-radius:50%; background: var(--border); flex:none;
+    width:6px; height:6px; border-radius:50%; background: var(--border); flex:none; cursor:pointer;
     transition: background .15s ease, transform .15s ease;
   }
   .detalle-dot.active{ background: var(--accent); transform: scale(1.35); }
@@ -532,7 +542,11 @@
   <div class="sheet" style="padding:0; max-height:92vh; overflow:hidden; display:flex; flex-direction:column;">
     <button type="button" class="detalle-close-btn" onclick="closeSheet('sheetDetalle')" aria-label="Cerrar">✕</button>
     <div class="sheet-handle" style="margin:10px auto 0; flex:none;"></div>
-    <div class="detalle-galeria" id="detalleGaleria"></div>
+    <div class="detalle-galeria-wrap">
+      <button type="button" class="detalle-galeria-arrow detalle-galeria-arrow-left" id="detalleGaleriaArrowLeft" onclick="moverGaleriaDetalle(-1)" aria-label="Foto anterior" title="Foto anterior" style="display:none;">‹</button>
+      <div class="detalle-galeria" id="detalleGaleria"></div>
+      <button type="button" class="detalle-galeria-arrow detalle-galeria-arrow-right" id="detalleGaleriaArrowRight" onclick="moverGaleriaDetalle(1)" aria-label="Foto siguiente" title="Foto siguiente" style="display:none;">›</button>
+    </div>
     <div class="detalle-dots" id="detalleDots"></div>
     <div class="detalle-info">
       <div class="detalle-cat" id="detalleCat"></div>
@@ -599,7 +613,7 @@ function esNuevo(p){
 // Número de WhatsApp del negocio para el botón "Consultar" del detalle de
 // producto, en formato internacional sin signos ni espacios (ej: 5491155555555).
 // Mientras esté vacío, el botón avisa que falta configurarlo.
-const WHATSAPP_NUMERO = '5491169837322';
+const WHATSAPP_NUMERO = '';
 
 /* ---------- Subida de fotos a GitHub ---------- */
 const GH_REPO = 'Slabi21/-gestion-3d.html';
@@ -1161,16 +1175,48 @@ window.cerrarZoomFoto = function(){
 /* ---------- Detalle ampliado del producto ---------- */
 let detalleFotosCount = 0;
 
-function actualizarDotsActivo(){
-  if(detalleFotosCount <= 1) return;
+function actualizarIndicadoresGaleria(){
   const galeria = document.getElementById('detalleGaleria');
+  const arrowL = document.getElementById('detalleGaleriaArrowLeft');
+  const arrowR = document.getElementById('detalleGaleriaArrowRight');
+  if(detalleFotosCount <= 1){
+    if(arrowL) arrowL.style.display = 'none';
+    if(arrowR) arrowR.style.display = 'none';
+    return;
+  }
   const ancho = galeria.clientWidth || 1;
   const idx = Math.round(galeria.scrollLeft / ancho);
   document.querySelectorAll('#detalleDots .detalle-dot').forEach((d, i) => d.classList.toggle('active', i === idx));
+  if(arrowL) arrowL.style.display = idx > 0 ? 'flex' : 'none';
+  if(arrowR) arrowR.style.display = idx < detalleFotosCount - 1 ? 'flex' : 'none';
 }
 document.getElementById('detalleGaleria').addEventListener('scroll', () => {
-  requestAnimationFrame(actualizarDotsActivo);
+  requestAnimationFrame(actualizarIndicadoresGaleria);
 });
+// La rueda del mouse mueve el scroll en vertical por default: acá se
+// convierte ese movimiento en desplazamiento horizontal de la galería.
+// Con trackpad (que ya manda deltaX al deslizar de costado) se deja pasar
+// el gesto normal, sin interferir.
+document.getElementById('detalleGaleria').addEventListener('wheel', (e) => {
+  if(detalleFotosCount <= 1) return;
+  if(Math.abs(e.deltaY) > Math.abs(e.deltaX)){
+    e.preventDefault();
+    e.currentTarget.scrollLeft += e.deltaY;
+  }
+}, { passive: false });
+
+window.moverGaleriaDetalle = function(delta){
+  const galeria = document.getElementById('detalleGaleria');
+  const ancho = galeria.clientWidth || 1;
+  const idxActual = Math.round(galeria.scrollLeft / ancho);
+  const idxNuevo = Math.max(0, Math.min(detalleFotosCount - 1, idxActual + delta));
+  galeria.scrollTo({ left: idxNuevo * ancho, behavior: 'smooth' });
+};
+window.irAFotoDetalle = function(i){
+  const galeria = document.getElementById('detalleGaleria');
+  const ancho = galeria.clientWidth || 1;
+  galeria.scrollTo({ left: i * ancho, behavior: 'smooth' });
+};
 
 let detalleProductoActualId = null;
 
@@ -1197,11 +1243,12 @@ window.abrirDetalleProducto = function(id){
   const dotsEl = document.getElementById('detalleDots');
   if(fotos.length > 1){
     dotsEl.style.display = 'flex';
-    dotsEl.innerHTML = fotos.map((_, i) => `<span class="detalle-dot${i === 0 ? ' active' : ''}"></span>`).join('');
+    dotsEl.innerHTML = fotos.map((_, i) => `<span class="detalle-dot${i === 0 ? ' active' : ''}" onclick="irAFotoDetalle(${i})"></span>`).join('');
   }else{
     dotsEl.style.display = 'none';
     dotsEl.innerHTML = '';
   }
+  actualizarIndicadoresGaleria();
 
   document.getElementById('detalleCat').textContent = categoriasDe(p).join(' · ');
   document.getElementById('detalleNombre').textContent = p.nombre || '';
