@@ -44,6 +44,7 @@
     border-bottom: 1px solid var(--border);
     padding: 18px 16px 14px;
   }
+  .topbar-inner{ max-width:980px; margin:0 auto; }
   .topbar-row{ display:flex; align-items:center; justify-content:space-between; gap:10px; }
   .topbar h1{
     margin:0; font-size:1.1875rem; font-weight:700; letter-spacing:.2px;
@@ -75,7 +76,6 @@
     display:inline-flex; align-items:center; gap:4px;
   }
   .cat-filter-chip.active{ color: var(--accent-ink); background: var(--accent); border-color: var(--accent); }
-  .cat-filter-chip-novedad:not(.active){ color: var(--accent); border-color: rgba(255,122,41,.35); }
 
   .search-wrap{ display:none; margin-top:0; }
   .search-wrap.active{ display:block; margin-top:12px; animation: searchOpen .15s ease; }
@@ -334,22 +334,24 @@
 <body>
 
 <div class="topbar">
-  <div class="topbar-row">
-    <div>
-      <h1><span class="dot"></span>Catálogo Ludiverso 3D</h1>
-      <div class="sub" id="subtitulo">Productos y precios</div>
+  <div class="topbar-inner">
+    <div class="topbar-row">
+      <div>
+        <h1><span class="dot"></span>Catálogo Ludiverso 3D</h1>
+        <div class="sub" id="subtitulo">Productos y precios</div>
+      </div>
+      <button class="lock-btn" id="searchToggleBtn" aria-label="Buscar producto" title="Buscar producto" onclick="toggleBuscador()">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      </button>
+      <button class="lock-btn" id="fontSizeBtn" aria-label="Tamaño de letra" title="Tamaño de letra" onclick="openSheet('sheetFontSize')" style="font-size:0.8125rem;font-weight:700;">Aa</button>
     </div>
-    <button class="lock-btn" id="searchToggleBtn" aria-label="Buscar producto" title="Buscar producto" onclick="toggleBuscador()">
-      <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-    </button>
-    <button class="lock-btn" id="fontSizeBtn" aria-label="Tamaño de letra" title="Tamaño de letra" onclick="openSheet('sheetFontSize')" style="font-size:0.8125rem;font-weight:700;">Aa</button>
-  </div>
-  <div class="search-wrap" id="searchWrap">
-    <input id="buscador" placeholder="Buscar producto..." oninput="renderCatalogo()">
-  </div>
-  <div class="cat-filter-outer" id="catFilterOuter">
-    <div class="cat-filter-wrap" id="catFilterBar"></div>
-    <button type="button" class="cat-filter-arrow" id="catFilterArrow" onclick="scrollCategorias()" aria-label="Ver más categorías" title="Ver más categorías" style="display:none;">›</button>
+    <div class="search-wrap" id="searchWrap">
+      <input id="buscador" placeholder="Buscar producto..." oninput="renderCatalogo()">
+    </div>
+    <div class="cat-filter-outer" id="catFilterOuter">
+      <div class="cat-filter-wrap" id="catFilterBar"></div>
+      <button type="button" class="cat-filter-arrow" id="catFilterArrow" onclick="scrollCategorias()" aria-label="Ver más categorías" title="Ver más categorías" style="display:none;">›</button>
+    </div>
   </div>
 </div>
 
@@ -887,23 +889,17 @@ function actualizarDatalistCategorias(){
 }
 
 const ICONO_CHISPA = '<svg viewBox="0 0 24 24" width="11" height="11" fill="currentColor" style="flex:none;"><path d="M12 2l2.09 5.26L20 9l-5.26 2.09L12 16l-2.09-4.91L5 9l4.91-1.74L12 2z"/></svg>';
-const FILTRO_NOVEDADES = '__novedades__';
 function renderFiltroCategorias(){
   const el = document.getElementById('catFilterBar');
   const cats = [...new Set(productos.flatMap(categoriasDe))].sort((a,b)=>a.localeCompare(b,'es'));
-  const hayNovedades = productos.some(esNuevo);
-  if(cats.length === 0 && !hayNovedades){
+  if(cats.length === 0){
     el.innerHTML = '';
     actualizarFlechaCategorias();
     return;
   }
-  const chips = [
-    { val:'', label:'Todos' },
-    ...(hayNovedades ? [{ val:FILTRO_NOVEDADES, label:'Novedades', novedad:true }] : []),
-    ...cats.map(c=>({val:c, label:c})),
-  ];
+  const chips = [{ val:'', label:'Todos' }, ...cats.map(c=>({val:c, label:c}))];
   el.innerHTML = chips.map(c => `
-    <button type="button" class="cat-filter-chip ${filtroCategoria===c.val?'active':''} ${c.novedad ? 'cat-filter-chip-novedad':''}" onclick="filtrarPorCategoria('${escapeAttr(c.val)}')">${c.novedad ? ICONO_CHISPA : ''}${escapeHtml(c.label)}</button>
+    <button type="button" class="cat-filter-chip ${filtroCategoria===c.val?'active':''}" onclick="filtrarPorCategoria('${escapeAttr(c.val)}')">${escapeHtml(c.label)}</button>
   `).join('');
   // Se recalcula recién en el próximo frame: ahí el navegador ya terminó
   // de acomodar los chips y scrollWidth/clientWidth quedan bien medidos.
@@ -941,9 +937,7 @@ function renderCatalogo(){
   const q = (document.getElementById('buscador').value || '').toLowerCase().trim();
 
   let lista = productos;
-  if(filtroCategoria === FILTRO_NOVEDADES){
-    lista = lista.filter(esNuevo);
-  }else if(filtroCategoria){
+  if(filtroCategoria){
     lista = lista.filter(p => categoriasDe(p).includes(filtroCategoria));
   }
   if(q){
@@ -975,9 +969,7 @@ function renderCatalogo(){
     // pertenece a esa categoría (se filtró arriba): lo agrupamos SOLO ahí,
     // no en todas sus categorías, para no duplicar la sección de otra
     // categoría a la que también pertenezca.
-    const catList = filtroCategoria === FILTRO_NOVEDADES ? ['Novedades']
-      : filtroCategoria ? [filtroCategoria]
-      : (categoriasDe(p).length ? categoriasDe(p) : ['Sin categoría']);
+    const catList = filtroCategoria ? [filtroCategoria] : (categoriasDe(p).length ? categoriasDe(p) : ['Sin categoría']);
     catList.forEach(cat => {
       (grupos[cat] = grupos[cat] || []).push(p);
     });
