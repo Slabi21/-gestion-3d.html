@@ -58,16 +58,24 @@
     cursor:pointer; flex:none; font-size:1rem;
   }
   .lock-btn.unlocked{ color: var(--accent); border-color: rgba(255,122,41,.35); }
+  .topbar-icons{ display:flex; align-items:center; gap:8px; flex:none; }
 
   .cat-filter-outer{ position:relative; margin-top:10px; }
   .cat-filter-wrap{ display:flex; gap:6px; overflow-x:auto; margin-top:0; padding-bottom:2px; scrollbar-width:none; }
   .cat-filter-wrap::-webkit-scrollbar{ display:none; }
   .cat-filter-arrow{
-    position:absolute; top:0; right:0; bottom:2px; width:30px;
-    display:flex; align-items:center; justify-content:flex-end;
-    border:none; cursor:pointer; padding-right:2px;
-    background: linear-gradient(to right, rgba(27,29,33,0), var(--bg) 60%);
+    position:absolute; top:0; bottom:2px; width:30px; z-index:2;
+    display:flex; align-items:center;
+    border:none; cursor:pointer;
     color: var(--accent); font-size:1.25rem; font-weight:700; line-height:1;
+  }
+  .cat-filter-arrow-right{
+    right:0; justify-content:flex-end; padding-right:2px;
+    background: linear-gradient(to right, rgba(27,29,33,0), var(--bg) 60%);
+  }
+  .cat-filter-arrow-left{
+    left:0; justify-content:flex-start; padding-left:2px;
+    background: linear-gradient(to left, rgba(27,29,33,0), var(--bg) 60%);
   }
   .cat-filter-chip{
     flex-shrink:0; font-family:'JetBrains Mono', monospace; font-size:0.8125rem;
@@ -166,6 +174,21 @@
     display:flex; align-items:center; justify-content:center; cursor:pointer;
   }
   .footer-gear-btn.active{ color: var(--accent); border-color: rgba(255,122,41,.35); }
+
+  /* En monitor de PC (pantalla ancha) el pie "Catálogo" queda siempre
+     pegado abajo del viewport, en vez de correrse hacia abajo según
+     cuánto midan verticalmente los productos cargados. En celular se
+     deja como estaba (al final del documento, después de la grilla). */
+  @media (min-width: 860px){
+    body{ padding-bottom: 86px; }
+    .editor-footer{
+      position: fixed; left:0; right:0; bottom:0; z-index:15;
+      background: linear-gradient(180deg, rgba(27,29,33,0) 0%, var(--bg) 40%);
+      border-top: 1px solid var(--border);
+      padding: 14px 16px calc(14px + env(safe-area-inset-bottom));
+    }
+    .fab{ bottom: 92px; }
+  }
 
   /* ---------- Bottom sheets ---------- */
   .sheet-backdrop{
@@ -340,17 +363,20 @@
         <h1><span class="dot"></span>Catálogo Ludiverso 3D</h1>
         <div class="sub" id="subtitulo">Productos y precios</div>
       </div>
-      <button class="lock-btn" id="searchToggleBtn" aria-label="Buscar producto" title="Buscar producto" onclick="toggleBuscador()">
-        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-      </button>
-      <button class="lock-btn" id="fontSizeBtn" aria-label="Tamaño de letra" title="Tamaño de letra" onclick="openSheet('sheetFontSize')" style="font-size:0.8125rem;font-weight:700;">Aa</button>
+      <div class="topbar-icons">
+        <button class="lock-btn" id="searchToggleBtn" aria-label="Buscar producto" title="Buscar producto" onclick="toggleBuscador()">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        </button>
+        <button class="lock-btn" id="fontSizeBtn" aria-label="Tamaño de letra" title="Tamaño de letra" onclick="openSheet('sheetFontSize')" style="font-size:0.8125rem;font-weight:700;">Aa</button>
+      </div>
     </div>
     <div class="search-wrap" id="searchWrap">
       <input id="buscador" placeholder="Buscar producto..." oninput="renderCatalogo()">
     </div>
     <div class="cat-filter-outer" id="catFilterOuter">
+      <button type="button" class="cat-filter-arrow cat-filter-arrow-left" id="catFilterArrowLeft" onclick="scrollCategorias(-1)" aria-label="Ver categorías anteriores" title="Ver categorías anteriores" style="display:none;">‹</button>
       <div class="cat-filter-wrap" id="catFilterBar"></div>
-      <button type="button" class="cat-filter-arrow" id="catFilterArrow" onclick="scrollCategorias()" aria-label="Ver más categorías" title="Ver más categorías" style="display:none;">›</button>
+      <button type="button" class="cat-filter-arrow cat-filter-arrow-right" id="catFilterArrow" onclick="scrollCategorias(1)" aria-label="Ver más categorías" title="Ver más categorías" style="display:none;">›</button>
     </div>
   </div>
 </div>
@@ -913,15 +939,19 @@ function renderFiltroCategorias(){
 // al deslizar con el dedo).
 function actualizarFlechaCategorias(){
   const wrap = document.getElementById('catFilterBar');
-  const arrow = document.getElementById('catFilterArrow');
-  if(!wrap || !arrow) return;
+  const arrowR = document.getElementById('catFilterArrow');
+  const arrowL = document.getElementById('catFilterArrowLeft');
+  if(!wrap || !arrowR || !arrowL) return;
   const hayOverflow = wrap.scrollWidth > wrap.clientWidth + 4;
+  const enElInicio = wrap.scrollLeft <= 4;
   const enElFinal = wrap.scrollLeft + wrap.clientWidth >= wrap.scrollWidth - 4;
-  arrow.style.display = (hayOverflow && !enElFinal) ? 'flex' : 'none';
+  arrowR.style.display = (hayOverflow && !enElFinal) ? 'flex' : 'none';
+  arrowL.style.display = (hayOverflow && !enElInicio) ? 'flex' : 'none';
 }
-window.scrollCategorias = function(){
+window.scrollCategorias = function(direccion){
   const wrap = document.getElementById('catFilterBar');
-  wrap.scrollBy({ left: Math.round(wrap.clientWidth * 0.7), behavior: 'smooth' });
+  const delta = Math.round(wrap.clientWidth * 0.7) * (direccion || 1);
+  wrap.scrollBy({ left: delta, behavior: 'smooth' });
 };
 document.getElementById('catFilterBar').addEventListener('scroll', actualizarFlechaCategorias);
 window.addEventListener('resize', actualizarFlechaCategorias);
