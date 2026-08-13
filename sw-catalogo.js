@@ -15,7 +15,7 @@
    catalogo-3d.html, cambiá el número de CACHE_NAME de abajo
    (ej. de 'v1' a 'v2'), igual que ya hacés con sw.js.
    ========================================================= */
-const CACHE_NAME = 'taller3d-catalogo-shell-v16';
+const CACHE_NAME = 'taller3d-catalogo-shell-v17';
 const APP_SHELL = ['./catalogo-3d.html'];
 
 self.addEventListener('install', (event) => {
