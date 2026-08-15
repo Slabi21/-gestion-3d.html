@@ -716,7 +716,7 @@
     <h3>Compartir catálogo</h3>
     <div class="field">
       <label>Cliente guardado</label>
-      <input id="compartirClienteBuscador" placeholder="Escribí un nombre o teléfono para buscar..." oninput="renderCompartirClienteList()">
+      <input id="compartirClienteBuscador" placeholder="Buscar por nombre o teléfono..." oninput="renderCompartirClienteList()">
     </div>
     <div class="catalog-pick-list" id="compartirClienteList" style="max-height:150px;"></div>
 
@@ -732,7 +732,7 @@
       </div>
       <div class="field" style="display:flex;align-items:center;gap:8px;">
         <input type="checkbox" id="compartirGuardarCheck" style="width:auto;" checked>
-        <label for="compartirGuardarCheck" style="margin:0;font-size:13.5px;color:var(--ink);font-weight:400;">Guardarlo como posible cliente para no perderlo</label>
+        <label for="compartirGuardarCheck" style="margin:0;font-size:13.5px;color:var(--ink);font-weight:400;">Guardarlo en Clientes para no perderlo</label>
       </div>
     </div>
 
@@ -750,10 +750,9 @@
 <div class="sheet-backdrop" id="sheetProspecto">
   <div class="sheet">
     <div class="sheet-handle"></div>
-    <h3 id="prospectoSheetTitle">Nuevo posible cliente</h3>
+    <h3>Nuevo posible cliente</h3>
     <input type="hidden" id="prospectoId">
     <div class="field"><label>Lugar</label><input id="prospectoNombre" placeholder="Ej: Ferretería Don José, Av. 44"></div>
-    <div class="field"><label>Teléfono (opcional)</label><input id="prospectoTelefono" placeholder="11 5555-5555" type="tel"><span class="field-hint">Se agrega +54 9 solo. Escribilo sin el 0 ni el 15 (ej: 11 5555-5555)</span></div>
     <div class="field"><label>Nota</label><textarea id="prospectoNota" placeholder="Vidriera grande, tal vez le interese cartelería 3D..."></textarea></div>
     <div class="field">
       <label>Ubicación (opcional)</label>
@@ -763,7 +762,6 @@
       <span class="field-hint" id="prospectoUbicacionEstado"></span>
     </div>
     <div class="sheet-actions">
-      <button class="btn btn-danger" id="btnEliminarProspectoForm" style="display:none;" onclick="deleteProspecto(document.getElementById('prospectoId').value)">Eliminar</button>
       <button class="btn btn-secondary" onclick="closeSheet('sheetProspecto')">Cancelar</button>
       <button class="btn btn-primary" onclick="saveProspecto()">Guardar</button>
     </div>
@@ -858,19 +856,21 @@
       <p class="instr-sub">Es gratis y no pide tarjeta de crédito. Lo tiene que crear la persona que administra el negocio, y después pegar la configuración en el código de la app.</p>
       <div class="instr-step"><span class="instr-num">1</span><span class="instr-text">Entrar a <b>console.firebase.google.com</b> y crear un proyecto nuevo.</span></div>
       <div class="instr-step"><span class="instr-num">2</span><span class="instr-text"><b>Compilación → Firestore Database → Crear base de datos</b>, en modo producción, eligiendo una región (ej. la más cercana a Argentina).</span></div>
-      <div class="instr-step"><span class="instr-num">3</span><span class="instr-text"><b>Compilación → Authentication → Comenzar</b>, pestaña "Sign-in method", habilitar el proveedor <b>Anónimo</b>.</span></div>
-      <div class="instr-step"><span class="instr-num">4</span><span class="instr-text">En Firestore, pestaña <b>Reglas</b>, pegar la regla que está comentada arriba de <span class="instr-code">FIREBASE_CONFIG</span> en el código, y publicar.</span></div>
-      <div class="instr-step"><span class="instr-num">5</span><span class="instr-text">Ícono de engranaje → <b>Configuración del proyecto</b> → "Tus apps" → ícono <b>&lt;/&gt;</b> (Web) → registrar la app → copiar el objeto <span class="instr-code">firebaseConfig</span> que muestra.</span></div>
-      <div class="instr-step"><span class="instr-num">6</span><span class="instr-text">Abrir <span class="instr-code">gestion-3d.html</span> con un editor de texto, buscar <span class="instr-code">FIREBASE_CONFIG</span> al principio del código, y reemplazar esos valores por los que copiaste. Volver a subir el archivo a GitHub (y subir el número de <span class="instr-code">CACHE_NAME</span> en <span class="instr-code">sw.js</span>).</span></div>
+      <div class="instr-step"><span class="instr-num">3</span><span class="instr-text"><b>Compilación → Authentication → Comenzar</b>, pestaña "Sign-in method", habilitar el proveedor <b>Email/Password</b>. (Ya no se usa el proveedor "Anónimo": cualquiera podía colarse con ese método, por eso se pasó a cuentas reales.)</span></div>
+      <div class="instr-step"><span class="instr-num">4</span><span class="instr-text">Pestaña <b>Users</b> → <b>Add user</b> → crear una cuenta (email + contraseña) por cada persona que va a usar la app. Guardar esos datos en un lugar seguro — con eso se inicia sesión desde Opciones → Cuenta en cada celular.</span></div>
+      <div class="instr-step"><span class="instr-num">5</span><span class="instr-text">En Firestore, pestaña <b>Reglas</b>, pegar la regla que está comentada arriba de <span class="instr-code">FIREBASE_CONFIG</span> en el código, y publicar.</span></div>
+      <div class="instr-step"><span class="instr-num">6</span><span class="instr-text">Ícono de engranaje → <b>Configuración del proyecto</b> → "Tus apps" → ícono <b>&lt;/&gt;</b> (Web) → registrar la app → copiar el objeto <span class="instr-code">firebaseConfig</span> que muestra.</span></div>
+      <div class="instr-step"><span class="instr-num">7</span><span class="instr-text">Abrir <span class="instr-code">gestion-3d.html</span> con un editor de texto, buscar <span class="instr-code">FIREBASE_CONFIG</span> al principio del código, y reemplazar esos valores por los que copiaste. Volver a subir el archivo a GitHub (y subir el número de <span class="instr-code">CACHE_NAME</span> en <span class="instr-code">sw.js</span>).</span></div>
     </div>
 
     <hr class="instr-divider">
 
     <div class="instr-group">
       <h4><span class="instr-icon">🔄</span>Paso 3 — Usar la sincronización</h4>
-      <div class="instr-step"><span class="instr-num">1</span><span class="instr-text">Cada vendedor carga su nombre en Opciones → <b>Tu identificación</b> (sin login de Google, sin contraseña).</span></div>
-      <div class="instr-step"><span class="instr-num">2</span><span class="instr-text">A partir de ahí, la app sube sus datos solos cada <b>5 minutos</b> mientras haya internet. También se puede tocar <b>Sincronizar ahora</b> para forzarlo al toque.</span></div>
-      <div class="instr-step"><span class="instr-num">3</span><span class="instr-text">Casa matriz agrega a cada vendedor desde <b>Gestionar vendedores</b>, cargando exactamente el mismo nombre que ese vendedor puso en su propia app.</span></div>
+      <div class="instr-step"><span class="instr-num">1</span><span class="instr-text">Cada vendedor carga su nombre en Opciones → <b>Tu identificación</b> (esto es solo la etiqueta que se muestra, no da acceso a nada).</span></div>
+      <div class="instr-step"><span class="instr-num">2</span><span class="instr-text">Además, en Opciones → <b>Cuenta</b>, inicia sesión con el email y la contraseña que le crearon en Firebase (paso 2.4 de arriba). Sin esta sesión, la app funciona igual de forma local, pero no sincroniza nada contra la nube.</span></div>
+      <div class="instr-step"><span class="instr-num">3</span><span class="instr-text">Una vez logueado, la app sube sus datos solos cada <b>5 minutos</b> mientras haya internet. También se puede tocar <b>Sincronizar ahora</b> para forzarlo al toque. La sesión queda guardada en el celular: no hace falta volver a loguearse cada vez que se abre la app.</span></div>
+      <div class="instr-step"><span class="instr-num">4</span><span class="instr-text">Casa matriz agrega a cada vendedor desde <b>Gestionar vendedores</b>, cargando exactamente el mismo nombre que ese vendedor puso en su propia app (esto sigue siendo independiente de la cuenta de acceso).</span></div>
     </div>
 
     <hr class="instr-divider">
@@ -898,7 +898,7 @@
                fecha, estado, createdAt, vendedor}
                // el total del pedido se calcula sumando cantidad*precio
                // de cada producto, no se guarda como campo aparte
-   prospects: {id, nombre, nota, createdAt, telefono,
+   prospects: {id, nombre, nota, createdAt,
                lat, lng}       // <- TODO(Maps): coordenadas al integrar Google Maps
                // (prospectos quedan fuera de la sincronización con Drive
                // por ahora, ver documento de decisiones)
@@ -928,17 +928,34 @@ let prospects = [];
       seguridad se ajustan en el paso 4) → elegir una región
       cercana (ej. southamerica-east1).
    3. "Compilación" → "Authentication" → "Comenzar" → pestaña
-      "Sign-in method" → habilitar el proveedor "Anónimo". Esto
-      permite que cada celular se identifique sin pedir login de
-      Google ni contraseña.
-   4. En Firestore → pestaña "Reglas", pegar esto y publicar (deja
-      leer/escribir solo a quien esté autenticado, aunque sea de
-      forma anónima — alcanza para este uso interno):
+      "Sign-in method" → habilitar el proveedor "Email/Password".
+      Después, pestaña "Users" → "Add user", uno por cada persona
+      que use la app (email + contraseña; no hace falta que el
+      email exista de verdad, solo que se recuerde). Esa cuenta es
+      la que se usa para iniciar sesión desde Opciones → Cuenta.
+      Ya NO se usa el proveedor "Anónimo": permitía que cualquiera
+      que abriera el link leyera y escribiera los datos del negocio
+      sin ninguna cuenta real.
+   4. En Firestore → pestaña "Reglas", pegar esto y publicar (el
+      catálogo de productos queda visible para cualquiera, como
+      corresponde para algo que se comparte por WhatsApp; todo lo
+      demás — clientes, pedidos, overrides de casa matriz — exige
+      una sesión real con email y contraseña):
       rules_version = '2';
       service cloud.firestore {
         match /databases/{database}/documents {
-          match /{document=**} {
-            allow read, write: if request.auth != null;
+          match /productos/{producto} {
+            allow read: if true;
+            allow write: if request.auth != null
+                         && request.auth.token.firebase.sign_in_provider == 'password';
+          }
+          match /vendedores/{doc} {
+            allow read, write: if request.auth != null
+                                && request.auth.token.firebase.sign_in_provider == 'password';
+          }
+          match /overrides/{doc} {
+            allow read, write: if request.auth != null
+                                && request.auth.token.firebase.sign_in_provider == 'password';
           }
         }
       }
@@ -1623,7 +1640,7 @@ function renderProspects(){
   }
   const sorted = [...prospects].sort((a,b)=> b.createdAt - a.createdAt);
   list.innerHTML = sorted.map(p=>`
-    <div class="card prospect-card" onclick="openProspectoForm('${p.id}')">
+    <div class="card prospect-card">
       <div class="prospect-pin">📍</div>
       <div style="flex:1;">
         <div class="prospect-name">${escapeHtml(p.nombre)}</div>
@@ -1631,26 +1648,19 @@ function renderProspects(){
         <div class="prospect-date">${formatDate(new Date(p.createdAt).toISOString().slice(0,10))}${(p.lat && p.lng) ? ` · <a href="https://maps.google.com/?q=${p.lat},${p.lng}" target="_blank" onclick="event.stopPropagation()" style="color:var(--accent);text-decoration:none;">📍 Ver ubicación</a>` : ''}</div>
       </div>
       <div style="display:flex;flex-direction:column;gap:6px;flex:none;">
-        ${p.telefono ? `<button class="btn btn-secondary" style="padding:6px 10px;font-size:13px;" onclick="event.stopPropagation(); abrirWhatsapp('${p.telefono.replace(/[^\d]/g,'')}')" title="Contactar por WhatsApp">💬</button>` : ''}
-        <button class="btn btn-secondary" style="padding:6px 10px;font-size:11.5px;" onclick="event.stopPropagation(); convertirProspectoEnCliente('${p.id}')">→ Cliente</button>
-        <button class="btn btn-danger" style="padding:6px 10px;font-size:12px;" onclick="event.stopPropagation(); deleteProspecto('${p.id}')">✕</button>
+        <button class="btn btn-secondary" style="padding:6px 10px;font-size:11.5px;" onclick="convertirProspectoEnCliente('${p.id}')">→ Cliente</button>
+        <button class="btn btn-danger" style="padding:6px 10px;font-size:12px;" onclick="deleteProspecto('${p.id}')">✕</button>
       </div>
     </div>
   `).join('');
 }
 
-function openProspectoForm(id){
-  document.getElementById('prospectoSheetTitle').textContent = id ? 'Editar posible cliente' : 'Nuevo posible cliente';
-  document.getElementById('prospectoId').value = id || '';
-  const p = id ? prospects.find(x=>x.id===id) : null;
-  document.getElementById('prospectoNombre').value = p?.nombre || '';
-  document.getElementById('prospectoTelefono').value = p?.telefono || '';
-  document.getElementById('prospectoNota').value = p?.nota || '';
-  document.getElementById('prospectoLat').value = p?.lat ?? '';
-  document.getElementById('prospectoLng').value = p?.lng ?? '';
-  document.getElementById('prospectoUbicacionEstado').textContent = (p?.lat && p?.lng) ? '✅ Tiene ubicación guardada' : '';
-  const btnEliminar = document.getElementById('btnEliminarProspectoForm');
-  if(btnEliminar) btnEliminar.style.display = id ? '' : 'none';
+function openProspectoForm(){
+  document.getElementById('prospectoNombre').value = '';
+  document.getElementById('prospectoNota').value = '';
+  document.getElementById('prospectoLat').value = '';
+  document.getElementById('prospectoLng').value = '';
+  document.getElementById('prospectoUbicacionEstado').textContent = '';
   openSheet('sheetProspecto');
 }
 
@@ -1683,22 +1693,16 @@ function capturarUbicacionProspecto(){
 async function saveProspecto(){
   const nombre = document.getElementById('prospectoNombre').value.trim();
   if(!nombre){ alert('Poné el nombre o dirección del lugar'); return; }
-  const id = document.getElementById('prospectoId').value;
   const latVal = document.getElementById('prospectoLat').value;
   const lngVal = document.getElementById('prospectoLng').value;
-  const data = {
+  prospects.push({
+    id: uid(),
     nombre,
-    telefono: normalizarTelefonoAR(document.getElementById('prospectoTelefono').value),
     nota: document.getElementById('prospectoNota').value.trim(),
+    createdAt: Date.now(),
     lat: latVal ? Number(latVal) : null,
     lng: lngVal ? Number(lngVal) : null,
-  };
-  if(id){
-    const idx = prospects.findIndex(p=>p.id===id);
-    if(idx>-1) prospects[idx] = { ...prospects[idx], ...data };
-  }else{
-    prospects.push({ id: uid(), createdAt: Date.now(), ...data });
-  }
+  });
   await persist('prospects', prospects);
   renderProspects();
   closeSheet('sheetProspecto');
@@ -1710,18 +1714,14 @@ function convertirProspectoEnCliente(id){
   if(!p) return;
   openClienteForm();
   document.getElementById('clienteNombre').value = p.nombre;
-  document.getElementById('clienteTelefono').value = p.telefono || '';
   document.getElementById('clienteNotas').value = p.nota || '';
   document.getElementById('clienteProspectoOrigen').value = id;
 }
 
 async function deleteProspecto(id){
-  if(!id) return;
-  if(!confirm('¿Eliminar este posible cliente?')) return;
   prospects = prospects.filter(p=>p.id!==id);
   await persist('prospects', prospects);
   renderProspects();
-  closeSheet('sheetProspecto');
 }
 
 /* ---------- NAV / SHEETS / HELPERS ---------- */
@@ -2082,10 +2082,20 @@ function actualizarUIModo(){
 }
 function actualizarUISync(){
   const el = document.getElementById('lastSyncLabel');
-  if(!el) return;
-  el.textContent = lastSyncAt
-    ? 'Última sincronización: ' + new Date(lastSyncAt).toLocaleTimeString('es-AR', {hour:'2-digit', minute:'2-digit'})
-    : 'Todavía no sincronizó';
+  if(el){
+    el.textContent = lastSyncAt
+      ? 'Última sincronización: ' + new Date(lastSyncAt).toLocaleTimeString('es-AR', {hour:'2-digit', minute:'2-digit'})
+      : 'Todavía no sincronizó';
+  }
+  const logueado = !!(fbAuth && fbAuth.currentUser);
+  const loginForm = document.getElementById('loginForm');
+  const loginStatus = document.getElementById('loginStatus');
+  const loginEmailShow = document.getElementById('loginEmailShow');
+  if(loginForm) loginForm.style.display = logueado ? 'none' : '';
+  if(loginStatus) loginStatus.style.display = logueado ? '' : 'none';
+  if(loginEmailShow) loginEmailShow.textContent = logueado ? fbAuth.currentUser.email : '';
+  const syncBtn = document.getElementById('syncNowBtn');
+  if(syncBtn) syncBtn.disabled = !logueado;
 }
 async function sincronizarAhora(){
   const btn = document.getElementById('syncNowBtn');
@@ -2111,6 +2121,12 @@ async function sincronizarAhora(){
    matriz cargó en "Gestionar vendedores".
    ========================================================= */
 let fbCargaEnCurso = null;
+// Usuario real de Firebase Auth (email/contraseña), o null si no hay sesión.
+// Ya NO se usa login anónimo: sin sesión real, la app sigue funcionando
+// 100% local (localStorage), pero no sincroniza contra Firestore — las
+// reglas de seguridad del proyecto exigen una sesión real para leer o
+// escribir los datos del negocio.
+let usuarioActual = null;
 function cargarFirebase(){
   if(fbDb) return Promise.resolve();
   if(fbCargaEnCurso) return fbCargaEnCurso;
@@ -2127,13 +2143,45 @@ function cargarFirebase(){
     fbApp = initializeApp(FIREBASE_CONFIG);
     fbAuth = fbSdk.getAuth(fbApp);
     fbDb = fbSdk.getFirestore(fbApp);
-    await fbSdk.signInAnonymously(fbAuth);
+    // Si ya había una sesión iniciada antes en este dispositivo, Firebase
+    // la recupera sola (queda guardada localmente), incluso sin internet
+    // en este preciso momento — por eso no hace falta volver a loguearse
+    // cada vez que se abre la app.
+    fbSdk.onAuthStateChanged(fbAuth, (user)=>{
+      usuarioActual = user || null;
+      actualizarUISync();
+    });
   })();
   return fbCargaEnCurso;
 }
 function slug(s){
   return (s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,'') || 'x';
 }
+
+window.iniciarSesion = async function(){
+  const email = document.getElementById('loginEmail').value.trim();
+  const pass = document.getElementById('loginPassword').value;
+  const errEl = document.getElementById('loginError');
+  const btn = document.getElementById('loginBtn');
+  errEl.textContent = '';
+  if(!email || !pass){ errEl.textContent = 'Completá usuario y contraseña.'; return; }
+  if(btn){ btn.disabled = true; btn.textContent = 'Ingresando...'; }
+  try{
+    await cargarFirebase();
+    await fbSdk.signInWithEmailAndPassword(fbAuth, email, pass);
+    document.getElementById('loginPassword').value = '';
+    sincronizarAhora();
+  }catch(e){
+    console.warn(e);
+    errEl.textContent = 'No se pudo iniciar sesión. Revisá el usuario y la contraseña.';
+  }finally{
+    if(btn){ btn.disabled = false; btn.textContent = 'Ingresar'; }
+  }
+};
+window.cerrarSesion = async function(){
+  if(!confirm('¿Cerrar sesión en este dispositivo? La app va a seguir funcionando local, pero no va a sincronizar hasta que vuelvas a entrar.')) return;
+  try{ await cargarFirebase(); await fbSdk.signOut(fbAuth); }catch(e){ console.warn(e); }
+};
 
 /* ---------- Sincronización: modo vendedor ---------- */
 async function subirDatosPropios(){
@@ -2154,6 +2202,7 @@ async function sincronizarVendedor(){
   if(!firebaseConfigured()) return;
   try{
     await cargarFirebase();
+    if(!fbAuth.currentUser){ actualizarUISync(); return; } // sin sesión: no sincroniza, pero la app sigue andando local
     await subirDatosPropios();
     await leerOverridesPropios();
     lastSyncAt = Date.now();
@@ -2167,6 +2216,7 @@ async function sincronizarCasaMatriz(){
   if(!firebaseConfigured()) return;
   try{
     await cargarFirebase();
+    if(!fbAuth.currentUser){ actualizarUISync(); return; }
     const refOverrides = fbSdk.doc(fbDb, 'overrides', 'casaMatriz');
     await fbSdk.setDoc(refOverrides, { overrides: overridesData, updatedAt: Date.now() });
 
@@ -2220,6 +2270,25 @@ loadAll();
         <input id="vendorNameInput" placeholder="Ej: Juan, Sucursal Norte">
       </div>
       <button class="btn btn-secondary" style="width:100%;" onclick="guardarNombreVendedor()">Guardar identificación</button>
+    </div>
+
+    <div class="opt-section">
+      <h4>Cuenta (necesaria para sincronizar)</h4>
+      <div id="loginForm">
+        <p style="font-size:12px;color:var(--ink-dim);margin:0 0 10px;">Sin sesión iniciada, la app funciona igual de forma local, pero no sube ni baja nada de la nube.</p>
+        <div class="field" style="margin-bottom:8px;">
+          <input id="loginEmail" type="email" placeholder="Tu usuario (email)" autocomplete="username">
+        </div>
+        <div class="field" style="margin-bottom:8px;">
+          <input id="loginPassword" type="password" placeholder="Contraseña" autocomplete="current-password" onkeydown="if(event.key==='Enter') iniciarSesion()">
+        </div>
+        <p id="loginError" style="font-size:12px;color:var(--danger);min-height:14px;margin:0 0 6px;"></p>
+        <button class="btn btn-primary" id="loginBtn" style="width:100%;" onclick="iniciarSesion()">Ingresar</button>
+      </div>
+      <div id="loginStatus" style="display:none;">
+        <p style="font-size:12.5px;color:var(--ink-dim);margin:0 0 10px;">✅ Sesión iniciada como <span id="loginEmailShow" style="color:var(--ink);font-weight:600;"></span></p>
+        <button class="btn btn-secondary" style="width:100%;" onclick="cerrarSesion()">Cerrar sesión</button>
+      </div>
     </div>
 
     <div class="opt-section">
@@ -2297,18 +2366,13 @@ document.getElementById('shareCatalogBtn').addEventListener('click', ()=>{
 function renderCompartirClienteList(){
   const q = (document.getElementById('compartirClienteBuscador').value || '').toLowerCase().trim();
   const cont = document.getElementById('compartirClienteList');
-  if(!q){
-    // Sin nada escrito no se muestra ningún contacto: evita la lista larga
-    // y confusa apenas se abre el selector. Solo aparecen resultados a
-    // medida que se escribe un nombre o teléfono.
-    cont.innerHTML = '';
-    return;
-  }
   const fuente = casaMatrizModo ? cmConsolidado.clients : clients;
   let lista = fuente.filter(c => c.telefono);
-  lista = lista.filter(c => (c.nombre||'').toLowerCase().includes(q) || (c.telefono||'').toLowerCase().includes(q));
+  if(q){
+    lista = lista.filter(c => (c.nombre||'').toLowerCase().includes(q) || (c.telefono||'').toLowerCase().includes(q));
+  }
   if(!lista.length){
-    cont.innerHTML = `<div style="font-size:12.5px;color:var(--ink-dim);padding:8px 2px;">Sin resultados para "${escapeHtml(q)}".</div>`;
+    cont.innerHTML = `<div style="font-size:12.5px;color:var(--ink-dim);padding:8px 2px;">${fuente.length ? 'No hay clientes con teléfono que coincidan.' : 'Todavía no tenés clientes guardados.'}</div>`;
     return;
   }
   cont.innerHTML = lista.slice(0, 30).map(c => `
@@ -2347,19 +2411,16 @@ window.confirmarCompartirCatalogo = async function(){
   if(digits.length < 12){ document.getElementById('compartirError').textContent = 'Revisá el número, parece incompleto.'; return; }
 
   // Si es un número nuevo (no venía de la lista de clientes) y tildaron
-  // guardarlo, lo suma a Posibles clientes (no a Clientes directamente):
-  // recién se vuelve cliente cuando el vendedor lo confirma a mano con
-  // "→ Cliente" en la pestaña de Prospectos.
+  // guardarlo, lo suma a Clientes ahí mismo para no perder el contacto.
   if(!compartirClienteSeleccionado && !casaMatrizModo && document.getElementById('compartirGuardarCheck').checked){
     const nombre = document.getElementById('compartirNombreNuevo').value.trim() || 'Sin nombre';
-    prospects.push({
-      id: uid(), createdAt: Date.now(),
-      nombre, telefono: telefonoNormalizado,
-      nota: 'Contacto guardado al compartir el catálogo.',
-      lat: null, lng: null,
+    clients.push({
+      id: uid(), createdAt: Date.now(), documentoUrl: null, vendedor: vendorName || null,
+      nombre, telefono: telefonoNormalizado, email: '', direccion: '',
+      notas: 'Contacto guardado al compartir el catálogo.',
     });
-    await persist('prospects', prospects);
-    renderProspects();
+    await persist('clients', clients);
+    renderClients();
   }
 
   const texto = 'Mirá nuestro catálogo de productos 3D:';

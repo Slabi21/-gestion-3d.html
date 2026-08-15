@@ -359,9 +359,6 @@
         <div class="sub" id="subtitulo">Productos y precios</div>
       </div>
       <div class="topbar-icons">
-        <button class="lock-btn" id="whatsappContactBtn" aria-label="Consultar por WhatsApp" title="Consultar por WhatsApp" onclick="contactarPorWhatsappGeneral()" style="color:#25D366;">
-          <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M12.04 2c-5.46 0-9.91 4.45-9.91 9.91 0 1.75.46 3.45 1.32 4.95L2 22l5.25-1.38c1.45.79 3.08 1.21 4.79 1.21h.01c5.46 0 9.91-4.45 9.91-9.91 0-2.65-1.03-5.14-2.9-7.01A9.82 9.82 0 0012.04 2zm5.71 14.02c-.24.68-1.4 1.31-1.93 1.35-.5.05-1.13.07-1.82-.11-.42-.11-.96-.31-1.65-.6-2.9-1.25-4.79-4.18-4.94-4.38-.14-.2-1.18-1.57-1.18-3 0-1.42.75-2.12 1.02-2.41.27-.29.58-.36.78-.36.19 0 .39 0 .56.01.18.01.42-.07.66.5.24.58.83 2.01.9 2.16.07.15.11.32.02.51-.09.19-.14.31-.28.48-.14.16-.29.36-.42.49-.14.14-.28.28-.12.55.16.27.72 1.19 1.55 1.92 1.06.95 1.96 1.24 2.23 1.38.27.14.42.12.58-.07.16-.19.68-.79.87-1.06.18-.27.36-.22.6-.13.24.09 1.53.72 1.79.85.27.14.44.2.51.31.07.11.07.65-.17 1.33z"/></svg>
-        </button>
         <button class="lock-btn" id="searchToggleBtn" aria-label="Buscar producto" title="Buscar producto" onclick="toggleBuscador()">
           <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
         </button>
@@ -403,9 +400,42 @@
     </div>
     <div class="btn-row">
       <button class="btn btn-primary" onclick="guardarDiasNuevo()">Guardar</button>
+      <button class="btn btn-secondary" onclick="closeSheet('sheetConfigEditor'); openSheet('sheetLoginCatalogo'); actualizarUILogin();">Cuenta (para guardar cambios)</button>
       <button class="btn btn-secondary" onclick="closeSheet('sheetConfigEditor'); abrirConfigGithub();">Subida de fotos</button>
       <button class="btn btn-secondary" onclick="closeSheet('sheetConfigEditor'); bloquearEditor();">Bloquear este dispositivo</button>
       <button class="btn btn-secondary" onclick="closeSheet('sheetConfigEditor')">Cerrar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Sheet: cuenta (login real para poder guardar cambios en el catálogo) -->
+<div class="sheet-backdrop" id="sheetLoginCatalogo">
+  <div class="sheet">
+    <div class="sheet-handle"></div>
+    <h3>Cuenta</h3>
+    <div id="loginEditorForm">
+      <p class="field-hint" style="margin:-6px 0 14px;">Este "Modo edición" (la clave de recién) es solo para no mostrar los botones de edición a cualquiera que abra el catálogo. Para que los cambios se guarden de verdad, hace falta además iniciar sesión con la cuenta real que se creó en Firebase.</p>
+      <div class="field">
+        <label>Usuario (email)</label>
+        <input id="loginEditorEmail" type="email" placeholder="tu@email.com" autocomplete="username">
+      </div>
+      <div class="field">
+        <label>Contraseña</label>
+        <input id="loginEditorPassword" type="password" placeholder="Contraseña" autocomplete="current-password" onkeydown="if(event.key==='Enter') iniciarSesionEditor()">
+      </div>
+      <div class="form-error" id="loginEditorError"></div>
+      <div class="btn-row">
+        <button class="btn btn-primary" onclick="iniciarSesionEditor()">Ingresar</button>
+      </div>
+    </div>
+    <div id="loginEditorStatus" style="display:none;">
+      <p style="font-size:0.8438rem;color:var(--ink-dim);margin:0 0 14px;">✅ Sesión iniciada como <span id="loginEditorEmailShow" style="color:var(--ink);font-weight:600;"></span></p>
+      <div class="btn-row">
+        <button class="btn btn-secondary" onclick="cerrarSesionEditor()">Cerrar sesión</button>
+      </div>
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-secondary" onclick="closeSheet('sheetLoginCatalogo')">Cerrar</button>
     </div>
   </div>
 </div>
@@ -886,9 +916,45 @@ async function cargarFirebase(){
     // funcionando, solo que sin caché offline de los datos.
     console.warn('No se pudo activar la caché offline de Firestore', e);
   }
-  await fbSdk.signInAnonymously(fbAuth);
+  // Leer el catálogo es público (no hace falta sesión, así lo puede ver
+  // cualquier cliente). Editar productos SÍ exige sesión real: se controla
+  // en las reglas de Firestore, no acá. Si ya había una sesión guardada en
+  // este dispositivo, Firebase la recupera sola.
+  fbSdk.onAuthStateChanged(fbAuth, (user)=>{
+    usuarioActual = user || null;
+    actualizarUILogin();
+  });
   escucharProductos();
 }
+
+window.iniciarSesionEditor = async function(){
+  const email = document.getElementById('loginEditorEmail').value.trim();
+  const pass = document.getElementById('loginEditorPassword').value;
+  const errEl = document.getElementById('loginEditorError');
+  errEl.textContent = '';
+  if(!email || !pass){ errEl.textContent = 'Completá usuario y contraseña.'; return; }
+  try{
+    await cargarFirebase();
+    await fbSdk.signInWithEmailAndPassword(fbAuth, email, pass);
+    document.getElementById('loginEditorPassword').value = '';
+  }catch(e){
+    console.warn(e);
+    errEl.textContent = 'No se pudo iniciar sesión. Revisá el usuario y la contraseña.';
+  }
+};
+window.cerrarSesionEditor = async function(){
+  try{ await cargarFirebase(); await fbSdk.signOut(fbAuth); }catch(e){ console.warn(e); }
+};
+function actualizarUILogin(){
+  const logueado = !!(fbAuth && fbAuth.currentUser);
+  const form = document.getElementById('loginEditorForm');
+  const status = document.getElementById('loginEditorStatus');
+  const emailShow = document.getElementById('loginEditorEmailShow');
+  if(form) form.style.display = logueado ? 'none' : '';
+  if(status) status.style.display = logueado ? '' : 'none';
+  if(emailShow) emailShow.textContent = logueado ? fbAuth.currentUser.email : '';
+}
+let usuarioActual = null;
 function escucharProductos(){
   const ref = fbSdk.collection(fbDb, 'productos');
   fbSdk.onSnapshot(ref, snap => {
@@ -1091,6 +1157,10 @@ window.moverProductoOrden = async function(id, cat, delta){
 
   try{
     await cargarFirebase();
+    if(!fbAuth.currentUser){
+      alert('Iniciá sesión primero (Modo edición → Configuración → Cuenta).');
+      return;
+    }
     await Promise.all(nuevos.map(u => fbSdk.setDoc(fbSdk.doc(fbDb, 'productos', u.id), { orden: u.orden }, { merge: true })));
   }catch(e){
     console.warn(e);
@@ -1265,17 +1335,6 @@ window.abrirDetalleProducto = function(id){
   descEl.style.display = p.descripcion ? '' : 'none';
 
   openSheet('sheetDetalle');
-};
-
-// Botón de la barra superior: visible para cualquiera que abra el catálogo
-// (no solo mirando el detalle de un producto), para consultar en general.
-window.contactarPorWhatsappGeneral = function(){
-  if(!WHATSAPP_NUMERO){
-    alert('Falta configurar el número de WhatsApp del negocio. Buscá WHATSAPP_NUMERO al principio del código de catalogo-3d.html.');
-    return;
-  }
-  const texto = 'Hola! Te escribo por el catálogo de Ludiverso 3D, quería hacer una consulta.';
-  window.open(`https://wa.me/${WHATSAPP_NUMERO}?text=${encodeURIComponent(texto)}`, '_blank');
 };
 
 window.consultarPorWhatsapp = function(){
@@ -1475,6 +1534,10 @@ window.guardarProducto = async function(){
   };
   try{
     await cargarFirebase();
+    if(!fbAuth.currentUser){
+      document.getElementById('productoError').textContent = 'Iniciá sesión primero (Modo edición → Configuración → Cuenta).';
+      return;
+    }
     const existente = productos.find(x => x.id === id);
     if(!existente) data.createdAt = Date.now();
     await fbSdk.setDoc(fbSdk.doc(fbDb, 'productos', id), data, { merge: true });
@@ -1491,6 +1554,10 @@ window.eliminarProducto = async function(){
   if(!confirm('¿Eliminar este producto del catálogo?')) return;
   try{
     await cargarFirebase();
+    if(!fbAuth.currentUser){
+      document.getElementById('productoError').textContent = 'Iniciá sesión primero (Modo edición → Configuración → Cuenta).';
+      return;
+    }
     await fbSdk.deleteDoc(fbSdk.doc(fbDb, 'productos', id));
     closeSheet('sheetProducto');
   }catch(e){
