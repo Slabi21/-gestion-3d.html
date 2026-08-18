@@ -358,11 +358,10 @@
     font-family:'JetBrains Mono',monospace;
   }
   .cart-add-icon-btn{
-    position:absolute; bottom:8px; right:8px; z-index:2;
-    width:34px; height:34px; border-radius:50%;
+    width:28px; height:28px; border-radius:50%; flex:none;
     background: var(--accent); color: var(--accent-ink);
     border:none; display:flex; align-items:center; justify-content:center;
-    cursor:pointer; box-shadow: 0 4px 10px rgba(255,122,41,.4);
+    cursor:pointer; box-shadow: 0 3px 8px rgba(255,122,41,.35);
     transition: transform .12s ease;
   }
   .cart-add-icon-btn:active{ transform: scale(0.88); }
@@ -1341,15 +1340,17 @@ function productoCardHtml(p, cat){
         </div>` : ''}
       <div class="product-photo">
         ${foto}
-        <button type="button" class="cart-add-icon-btn" title="Agregar al carrito" onclick="event.stopPropagation(); agregarAlCarritoRapido('${p.id}', event)">
-          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg>
-        </button>
       </div>
       <div class="product-info">
         <div class="product-name">${escapeHtml(p.nombre)}</div>
         <div class="product-price-row">
           <span class="product-price mono">$${precio.toLocaleString('es-AR')}</span>
-          ${dias > 0 ? `<span class="product-days">${dias} día${dias===1?'':'s'}</span>` : ''}
+          <div style="display:flex;align-items:center;gap:6px;">
+            ${dias > 0 ? `<span class="product-days">${dias} día${dias===1?'':'s'}</span>` : ''}
+            <button type="button" class="cart-add-icon-btn" title="Agregar al carrito" onclick="event.stopPropagation(); agregarAlCarritoRapido('${p.id}', event)">
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg>
+            </button>
+          </div>
         </div>
         ${dispChipHtml(p)}
       </div>
