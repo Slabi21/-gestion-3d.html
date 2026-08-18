@@ -115,6 +115,7 @@
   .product-photo{
     width:100%; aspect-ratio:1/1; background: var(--surface-2);
     display:flex; align-items:center; justify-content:center; overflow:hidden;
+    position:relative;
   }
   .product-photo img{ width:100%; height:100%; object-fit:cover; display:block; }
   .product-photo .placeholder{ color: var(--ink-dim); font-size:0.6875rem; text-align:center; padding:8px; }
@@ -356,13 +357,22 @@
     font-size:0.625rem; font-weight:700; line-height:16px; text-align:center;
     font-family:'JetBrains Mono',monospace;
   }
-  .cart-add-btn{
-    margin-top:2px; width:100%;
-    background: rgba(255,122,41,.12); border:1px solid rgba(255,122,41,.35);
-    color: var(--accent); border-radius:10px; padding:6px 8px;
-    font-size:0.75rem; font-weight:600; cursor:pointer;
+  .cart-add-icon-btn{
+    position:absolute; bottom:8px; right:8px; z-index:2;
+    width:34px; height:34px; border-radius:50%;
+    background: var(--accent); color: var(--accent-ink);
+    border:none; display:flex; align-items:center; justify-content:center;
+    cursor:pointer; box-shadow: 0 4px 10px rgba(255,122,41,.4);
+    transition: transform .12s ease;
   }
-  .cart-add-btn:active{ background: rgba(255,122,41,.22); }
+  .cart-add-icon-btn:active{ transform: scale(0.88); }
+  .cart-add-icon-btn.pop{ animation: cartAddPop .38s ease; }
+  @keyframes cartAddPop{
+    0%{ transform: scale(1) rotate(0deg); }
+    35%{ transform: scale(1.35) rotate(-8deg); }
+    60%{ transform: scale(0.92) rotate(4deg); }
+    100%{ transform: scale(1) rotate(0deg); }
+  }
   .cart-item{
     display:flex; align-items:center; gap:10px;
     background: var(--surface-2); border:1px solid var(--border); border-radius:12px;
@@ -730,7 +740,7 @@ function esNuevo(p){
 // Número de WhatsApp del negocio para el botón "Consultar" del detalle de
 // producto, en formato internacional sin signos ni espacios (ej: 5491155555555).
 // Mientras esté vacío, el botón avisa que falta configurarlo.
-const WHATSAPP_NUMERO = '5491169837322';
+const WHATSAPP_NUMERO = '';
 
 /* ---------- Subida de fotos a GitHub ---------- */
 const GH_REPO = 'Slabi21/-gestion-3d.html';
@@ -1209,13 +1219,19 @@ function carritoTotal(){
   return carrito.reduce((s,i)=> s + i.precio * i.cantidad, 0);
 }
 
-window.agregarAlCarritoRapido = function(id){
+window.agregarAlCarritoRapido = function(id, ev){
   const p = productos.find(x=>x.id===id);
   if(!p) return;
   const existente = carrito.find(i=>i.id===id);
   if(existente) existente.cantidad += 1;
   else carrito.push({ id, nombre: p.nombre, precio: Number(p.precio)||0, cantidad: 1 });
   guardarCarrito();
+  const btn = ev && ev.currentTarget;
+  if(btn){
+    btn.classList.remove('pop');
+    void btn.offsetWidth; // fuerza a reiniciar la animación si se toca varias veces seguidas
+    btn.classList.add('pop');
+  }
 };
 
 window.cambiarCantidadDetalle = function(delta){
@@ -1323,7 +1339,12 @@ function productoCardHtml(p, cat){
           <button class="mini-btn mini-btn-sm" onclick="event.stopPropagation(); moverProductoOrden('${p.id}', '${escapeAttr(cat)}', 1)" title="Mover después">↓</button>
           <button class="mini-btn" onclick="event.stopPropagation(); abrirProductoForm('${p.id}')" title="Editar">✎</button>
         </div>` : ''}
-      <div class="product-photo">${foto}</div>
+      <div class="product-photo">
+        ${foto}
+        <button type="button" class="cart-add-icon-btn" title="Agregar al carrito" onclick="event.stopPropagation(); agregarAlCarritoRapido('${p.id}', event)">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg>
+        </button>
+      </div>
       <div class="product-info">
         <div class="product-name">${escapeHtml(p.nombre)}</div>
         <div class="product-price-row">
@@ -1331,7 +1352,6 @@ function productoCardHtml(p, cat){
           ${dias > 0 ? `<span class="product-days">${dias} día${dias===1?'':'s'}</span>` : ''}
         </div>
         ${dispChipHtml(p)}
-        <button type="button" class="cart-add-btn" onclick="event.stopPropagation(); agregarAlCarritoRapido('${p.id}')">🛒 Agregar</button>
       </div>
     </div>`;
 }
