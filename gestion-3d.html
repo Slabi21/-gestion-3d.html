@@ -768,39 +768,6 @@
   </div>
 </div>
 
-<!-- Sheet: clave casa matriz -->
-<div class="sheet-backdrop" id="sheetClaveCM">
-  <div class="sheet">
-    <div class="sheet-handle"></div>
-    <h3>Acceso Casa Matriz</h3>
-    <div class="field"><label>Clave</label><input id="claveCMInput" type="password" placeholder="••••••••"></div>
-    <p id="claveCMError" style="font-size:12.5px;color:var(--danger);min-height:16px;"></p>
-    <div class="sheet-actions">
-      <button class="btn btn-secondary" onclick="closeSheet('sheetClaveCM')">Cancelar</button>
-      <button class="btn btn-primary" onclick="verificarClaveCM()">Entrar</button>
-    </div>
-  </div>
-</div>
-
-<!-- Sheet: alta/edición de vendedor (solo casa matriz) -->
-<div class="sheet-backdrop" id="sheetVendedor">
-  <div class="sheet">
-    <div class="sheet-handle"></div>
-    <h3 id="vendedorSheetTitle">Nuevo vendedor</h3>
-    <input type="hidden" id="vendedorId">
-    <div class="field">
-      <label>Nombre / identificador</label>
-      <input id="vendedorNombre" placeholder="Ej: Juan, Sucursal Norte">
-      <span class="field-hint">Tiene que ser exactamente el mismo nombre que ese vendedor cargue en su propia app, en Opciones → Tu identificación.</span>
-    </div>
-    <div class="sheet-actions">
-      <button class="btn btn-secondary" onclick="closeSheet('sheetVendedor')">Cancelar</button>
-      <button class="btn btn-primary" onclick="guardarVendedor()">Guardar</button>
-    </div>
-  </div>
-</div>
-
-<!-- Sheet: gestión de vendedores (solo casa matriz) -->
 <!-- Sheet: mini-dashboard (solo casa matriz) -->
 <div class="sheet-backdrop" id="sheetDashboard">
   <div class="sheet">
@@ -822,12 +789,13 @@
   </div>
 </div>
 
+<!-- Sheet: vendedores conectados (solo lectura — se descubren solos al sincronizar, ver casa matriz) -->
 <div class="sheet-backdrop" id="sheetVendedores">
   <div class="sheet">
     <div class="sheet-handle"></div>
     <h3>Vendedores</h3>
+    <p style="font-size:12.5px;color:var(--ink-dim);margin:-8px 0 14px;">Esta lista se arma sola con quien haya sincronizado alguna vez. Para dar de alta a alguien nuevo, creale su usuario en la consola de Firebase (Authentication → Users) — no hace falta hacer nada más acá.</p>
     <div id="vendedoresList"></div>
-    <button class="btn btn-primary" style="width:100%;margin-top:4px;" onclick="abrirVendedorForm()">+ Agregar vendedor</button>
     <div class="sheet-actions">
       <button class="btn btn-secondary" style="width:100%;" onclick="closeSheet('sheetVendedores')">Cerrar</button>
     </div>
@@ -981,13 +949,15 @@ function firebaseConfigured(){
   return !FIREBASE_CONFIG.apiKey.startsWith('PEGAR_') && !FIREBASE_CONFIG.projectId.startsWith('PEGAR_');
 }
 
-const CM_PASSWORD = 'Prisma21';
-
 /* ---------- Estado de vendedor / casa matriz ---------- */
+// Ya NO hay clave de casa matriz: el permiso está atado a la cuenta real
+// (usuarios/{uid}.rol === 'casaMatriz' en Firestore), y se activa una sola
+// vez a mano desde la consola de Firebase — nadie puede auto-otorgárselo
+// desde la app, ni siquiera sabiendo una clave.
 let vendorName = '';
-let casaMatrizUnlocked = false;          // ya se ingresó la clave alguna vez en este dispositivo
+let miRol = null;                        // 'vendedor' | 'casaMatriz' | null (todavía no se supo)
 let casaMatrizModo = false;              // viendo la app como casa matriz ahora mismo
-let casaMatrizVendedores = [];           // [{id, nombre}]
+let vendedoresConectados = [];           // [{uid, nombre, updatedAt}] descubiertos en vivo, solo en modo casa matriz
 let overridesData = { clients:{}, orders:{} }; // overrides conocidos/aplicados: {[id]:{campos,_at}}
 let cmConsolidado = { clients:[], orders:[] }; // datos combinados de todos los vendedores (solo modo casa matriz)
 let cmFiltroVendedor = '';
@@ -1077,9 +1047,11 @@ async function loadAll(){
   }catch(e){ prospects = []; }
 
   vendorName = localStorage.getItem(STORAGE_PREFIX + 'vendorName') || '';
-  casaMatrizUnlocked = localStorage.getItem(STORAGE_PREFIX + 'cmUnlocked') === 'true';
-  casaMatrizModo = casaMatrizUnlocked && localStorage.getItem(STORAGE_PREFIX + 'cmModo') === 'true';
-  try{ casaMatrizVendedores = JSON.parse(localStorage.getItem(STORAGE_PREFIX + 'cmVendedores') || '[]'); }catch(e){ casaMatrizVendedores = []; }
+  // Preferencia de "última vista usada" en este dispositivo — se confirma
+  // (o se corrige) apenas se sabe el rol real de la cuenta logueada, ver
+  // resolverMiRol(). Mientras tanto arranca oculta para no mostrar datos
+  // de casa matriz sin haber verificado el permiso todavía.
+  casaMatrizModo = false;
   try{ overridesData = JSON.parse(localStorage.getItem(STORAGE_PREFIX + 'overridesCache') || '{"clients":{},"orders":{}}'); }catch(e){ overridesData = {clients:{},orders:{}}; }
 
   renderAll();
@@ -1178,7 +1150,7 @@ function openClienteForm(id){
   if(casaMatrizModo){
     vField.style.display = '';
     const sel = document.getElementById('clienteVendedor');
-    sel.innerHTML = casaMatrizVendedores.map(v=>`<option value="${escapeHtml(v.nombre)}">${escapeHtml(v.nombre)}</option>`).join('');
+    sel.innerHTML = vendedoresConectados.map(v=>`<option value="${escapeHtml(v.nombre)}">${escapeHtml(v.nombre)}</option>`).join('');
     if(c?.vendedor) sel.value = c.vendedor;
   }else{
     vField.style.display = 'none';
@@ -1877,8 +1849,8 @@ function verDetalleOverride(tipo, id){
 function renderCmFilterBar(containerId){
   const el = document.getElementById(containerId);
   if(!el) return;
-  if(!casaMatrizModo || casaMatrizVendedores.length === 0){ el.innerHTML = ''; return; }
-  const chips = [{nombre:'', label:'Todos'}, ...casaMatrizVendedores.map(v=>({nombre:v.nombre, label:v.nombre}))];
+  if(!casaMatrizModo || vendedoresConectados.length === 0){ el.innerHTML = ''; return; }
+  const chips = [{nombre:'', label:'Todos'}, ...vendedoresConectados.map(v=>({nombre:v.nombre, label:v.nombre}))];
   el.innerHTML = `<div class="cm-filter-wrap">${chips.map(c=>`
     <button type="button" class="cm-filter-chip ${cmFiltroVendedor===c.nombre?'active':''}" onclick="filtrarPorVendedor('${escapeAttr(c.nombre)}')">${escapeHtml(c.label)}</button>
   `).join('')}</div>`;
@@ -1889,39 +1861,16 @@ function filtrarPorVendedor(nombre){
 }
 
 /* =========================================================
-   MODO CASA MATRIZ (clave, activación, gestión de vendedores)
+   MODO CASA MATRIZ (permiso atado a la cuenta, sin clave)
    ========================================================= */
-function abrirClaveCM(){
-  document.getElementById('claveCMInput').value = '';
-  document.getElementById('claveCMError').textContent = '';
-  openSheet('sheetClaveCM');
-}
-function verificarClaveCM(){
-  const val = document.getElementById('claveCMInput').value;
-  if(val === CM_PASSWORD){
-    casaMatrizUnlocked = true;
-    localStorage.setItem(STORAGE_PREFIX + 'cmUnlocked', 'true');
-    closeSheet('sheetClaveCM');
-    actualizarUIModo();
-    activarModoCasaMatriz();
-  }else{
-    document.getElementById('claveCMError').textContent = 'Clave incorrecta.';
-  }
-}
-function revocarCasaMatrizDeEsteDispositivo(){
-  if(!confirm('¿Quitar el acceso de casa matriz en este dispositivo? Vas a tener que volver a ingresar la clave para entrar de nuevo.')) return;
-  casaMatrizUnlocked = false;
-  casaMatrizModo = false;
-  localStorage.removeItem(STORAGE_PREFIX + 'cmUnlocked');
-  localStorage.removeItem(STORAGE_PREFIX + 'cmModo');
-  actualizarUIModo();
-  renderAll();
-}
 function activarModoCasaMatriz(){
+  if(miRol !== 'casaMatriz'){
+    alert('Esta cuenta no tiene permiso de casa matriz. Ese permiso se activa a mano desde la consola de Firebase (colección "usuarios", campo "rol").');
+    return;
+  }
   casaMatrizModo = true;
   localStorage.setItem(STORAGE_PREFIX + 'cmModo', 'true');
   actualizarUIModo();
-  iniciarSincronizacionAutomatica();
   sincronizarCasaMatriz();
   closeSheet('sheetBackup');
 }
@@ -1929,55 +1878,19 @@ function salirModoCasaMatriz(){
   casaMatrizModo = false;
   localStorage.setItem(STORAGE_PREFIX + 'cmModo', 'false');
   actualizarUIModo();
-  iniciarSincronizacionAutomatica();
   renderAll();
 }
 
-function abrirVendedorForm(id){
-  editandoVendedorId = id || null;
-  const v = id ? casaMatrizVendedores.find(x=>x.id===id) : null;
-  document.getElementById('vendedorSheetTitle').textContent = id ? 'Editar vendedor' : 'Nuevo vendedor';
-  document.getElementById('vendedorNombre').value = v?.nombre || '';
-  openSheet('sheetVendedor');
-}
-async function guardarVendedor(){
-  const nombre = document.getElementById('vendedorNombre').value.trim();
-  if(!nombre){ alert('Poné el nombre del vendedor'); return; }
-  // El identificador que usa Firebase para guardar/leer los datos de este
-  // vendedor es el nombre "normalizado" (slug): el vendedor tiene que haber
-  // puesto exactamente ese mismo nombre en su propia app (Opciones → Tu
-  // identificación) para que casa matriz lo encuentre.
-  if(editandoVendedorId){
-    const idx = casaMatrizVendedores.findIndex(v=>v.id===editandoVendedorId);
-    casaMatrizVendedores[idx] = { ...casaMatrizVendedores[idx], nombre };
-  }else{
-    casaMatrizVendedores.push({ id: uid(), nombre });
-  }
-  localStorage.setItem(STORAGE_PREFIX + 'cmVendedores', JSON.stringify(casaMatrizVendedores));
-  closeSheet('sheetVendedor');
-  renderVendedoresList();
-  sincronizarCasaMatriz();
-}
-async function eliminarVendedor(id){
-  if(!confirm('¿Quitar este vendedor de la vista de casa matriz? No se borra nada de sus datos en la nube.')) return;
-  casaMatrizVendedores = casaMatrizVendedores.filter(v=>v.id!==id);
-  localStorage.setItem(STORAGE_PREFIX + 'cmVendedores', JSON.stringify(casaMatrizVendedores));
-  renderVendedoresList();
-  sincronizarCasaMatriz();
-}
 function renderVendedoresList(){
   const el = document.getElementById('vendedoresList');
   if(!el) return;
-  el.innerHTML = casaMatrizVendedores.length
-    ? casaMatrizVendedores.map(v=>`
+  if(miRol !== 'casaMatriz'){ el.innerHTML = ''; return; }
+  el.innerHTML = vendedoresConectados.length
+    ? vendedoresConectados.map(v=>`
       <div class="vendedor-row">
-        <span>${escapeHtml(v.nombre)}</span>
-        <div class="vendedor-row-actions">
-          <button class="icon-btn-sm" onclick="abrirVendedorForm('${v.id}')">✏️</button>
-          <button class="icon-btn-sm" onclick="eliminarVendedor('${v.id}')">✕</button>
-        </div>
+        <span>${escapeHtml(v.nombre)}${v.updatedAt ? ` <span style="color:var(--ink-dim);font-size:11px;">· última sync ${formatDateTime(v.updatedAt)}</span>` : ''}</span>
       </div>`).join('')
-    : '<p style="color:var(--ink-dim);font-size:13px;">Todavía no agregaste vendedores.</p>';
+    : '<p style="color:var(--ink-dim);font-size:13px;">Todavía no sincronizó ningún vendedor.</p>';
 }
 function abrirDashboard(){
   if(!casaMatrizModo){ alert('El dashboard es solo para casa matriz.'); return; }
@@ -2048,21 +1961,31 @@ function abrirGestionVendedores(){
 /* =========================================================
    UI de Opciones: estado de modo / drive / casa matriz
    ========================================================= */
-function guardarNombreVendedor(){
+async function guardarNombreVendedor(){
   const val = document.getElementById('vendorNameInput').value.trim();
   vendorName = val;
   localStorage.setItem(STORAGE_PREFIX + 'vendorName', vendorName);
   actualizarUIModo();
+  if(fbAuth && fbAuth.currentUser){
+    try{
+      await cargarFirebase();
+      await fbSdk.setDoc(fbSdk.doc(fbDb, 'usuarios', fbAuth.currentUser.uid), { nombre: vendorName }, { merge: true });
+    }catch(e){ console.warn('No se pudo actualizar el nombre en la nube', e); }
+  }
 }
 function actualizarUIModo(){
   const elVendorInput = document.getElementById('vendorNameInput');
   if(elVendorInput) elVendorInput.value = vendorName;
 
+  // La sección de casa matriz solo se ofrece si la cuenta logueada tiene
+  // ese rol asignado en Firestore (usuarios/{uid}.rol === 'casaMatriz').
+  // Ya no hay clave: nadie puede auto-otorgárselo desde acá.
   const elCmLocked = document.getElementById('cmSeccionBloqueada');
   const elCmUnlocked = document.getElementById('cmSeccionDesbloqueada');
   if(elCmLocked && elCmUnlocked){
-    elCmLocked.style.display = casaMatrizUnlocked ? 'none' : '';
-    elCmUnlocked.style.display = casaMatrizUnlocked ? '' : 'none';
+    const esCasaMatriz = miRol === 'casaMatriz';
+    elCmLocked.style.display = esCasaMatriz ? 'none' : '';
+    elCmUnlocked.style.display = esCasaMatriz ? '' : 'none';
   }
   const elModoBtn = document.getElementById('cmModoToggleBtn');
   if(elModoBtn) elModoBtn.textContent = casaMatrizModo ? 'Volver a modo vendedor' : 'Entrar a modo casa matriz';
@@ -2109,16 +2032,19 @@ async function sincronizarAhora(){
 }
 
 /* =========================================================
-   FIREBASE — carga del SDK, autenticación anónima, Firestore
+   FIREBASE — carga del SDK, autenticación real, Firestore
    ---------------------------------------------------------
    Cada vendedor guarda sus datos en un documento propio, en la
-   colección "vendedores", con ID = slug(nombre del vendedor).
-   Casa matriz guarda sus overrides en un único documento fijo
-   ("overrides/casaMatriz") y arma la vista consolidada leyendo
-   el documento de cada vendedor que dio de alta.
-   No hace falta compartir links ni IDs de archivo: alcanza con
-   que el vendedor use, en Opciones, el mismo nombre que casa
-   matriz cargó en "Gestionar vendedores".
+   colección "vendedores", con ID = su UID de Firebase Auth (ya
+   NO el nombre tipeado a mano — eso evita el problema de "tiene
+   que ser exactamente el mismo texto en las dos apps").
+   El rol de cada cuenta (vendedor / casaMatriz) vive en
+   "usuarios/{uid}" y se asigna a mano desde la consola de
+   Firebase — ninguna pantalla de la app puede auto-otorgárselo.
+   Casa matriz arma la vista consolidada leyendo directamente
+   toda la colección "vendedores" (las reglas de Firestore le
+   dan permiso de lectura completa solo a esa cuenta), así que
+   no hace falta mantener una lista manual de nombres.
    ========================================================= */
 let fbCargaEnCurso = null;
 // Usuario real de Firebase Auth (email/contraseña), o null si no hay sesión.
@@ -2150,12 +2076,46 @@ function cargarFirebase(){
     fbSdk.onAuthStateChanged(fbAuth, (user)=>{
       usuarioActual = user || null;
       actualizarUISync();
+      if(user) resolverMiRol();
+      else { miRol = null; casaMatrizModo = false; actualizarUIModo(); renderAll(); }
     });
   })();
   return fbCargaEnCurso;
 }
-function slug(s){
-  return (s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,'') || 'x';
+
+// Se fija (y crea si hace falta) el documento usuarios/{uid} de la cuenta
+// logueada. Un usuario nuevo siempre arranca en rol 'vendedor': el campo
+// "rol" no se puede escribir desde acá (las reglas de Firestore lo
+// bloquean), así que la única forma de convertir una cuenta en casa
+// matriz es entrando a mano a la consola de Firebase y cambiando ese
+// campo en el documento — por diseño, para que nadie se lo autootorgue.
+async function resolverMiRol(){
+  try{
+    await cargarFirebase();
+    const uid = fbAuth.currentUser?.uid;
+    if(!uid) return;
+    const ref = fbSdk.doc(fbDb, 'usuarios', uid);
+    const snap = await fbSdk.getDoc(ref);
+    if(snap.exists()){
+      miRol = snap.data().rol || 'vendedor';
+      // Mantiene actualizado el nombre visible, sin tocar "rol".
+      if(vendorName && snap.data().nombre !== vendorName){
+        await fbSdk.setDoc(ref, { nombre: vendorName }, { merge: true });
+      }
+    }else{
+      miRol = 'vendedor';
+      await fbSdk.setDoc(ref, { nombre: vendorName || (fbAuth.currentUser.email||'').split('@')[0], rol: 'vendedor' });
+    }
+  }catch(e){
+    console.warn('No se pudo resolver el rol de la cuenta', e);
+    miRol = null;
+  }
+  // Si el dispositivo tenía guardado "estaba viendo casa matriz" pero la
+  // cuenta logueada ahora no tiene ese rol, se corrige sin preguntar.
+  if(miRol !== 'casaMatriz') casaMatrizModo = false;
+  else if(localStorage.getItem(STORAGE_PREFIX + 'cmModo') === 'true') casaMatrizModo = true;
+  actualizarUIModo();
+  (casaMatrizModo ? sincronizarCasaMatriz() : sincronizarVendedor());
 }
 
 window.iniciarSesion = async function(){
@@ -2170,7 +2130,6 @@ window.iniciarSesion = async function(){
     await cargarFirebase();
     await fbSdk.signInWithEmailAndPassword(fbAuth, email, pass);
     document.getElementById('loginPassword').value = '';
-    sincronizarAhora();
   }catch(e){
     console.warn(e);
     errEl.textContent = 'No se pudo iniciar sesión. Revisá el usuario y la contraseña.';
@@ -2185,9 +2144,9 @@ window.cerrarSesion = async function(){
 
 /* ---------- Sincronización: modo vendedor ---------- */
 async function subirDatosPropios(){
-  const ref = fbSdk.doc(fbDb, 'vendedores', slug(vendorName || 'vendedor'));
+  const ref = fbSdk.doc(fbDb, 'vendedores', fbAuth.currentUser.uid);
   await fbSdk.setDoc(ref, {
-    nombre: vendorName || 'vendedor',
+    nombre: vendorName || (fbAuth.currentUser.email||'').split('@')[0],
     clients, orders, prospects,
     updatedAt: Date.now()
   });
@@ -2216,24 +2175,23 @@ async function sincronizarCasaMatriz(){
   if(!firebaseConfigured()) return;
   try{
     await cargarFirebase();
-    if(!fbAuth.currentUser){ actualizarUISync(); return; }
+    if(!fbAuth.currentUser || miRol !== 'casaMatriz'){ actualizarUISync(); return; }
     const refOverrides = fbSdk.doc(fbDb, 'overrides', 'casaMatriz');
     await fbSdk.setDoc(refOverrides, { overrides: overridesData, updatedAt: Date.now() });
 
-    const clientesAll = [], ordersAll = [];
-    for(const v of casaMatrizVendedores){
-      try{
-        const ref = fbSdk.doc(fbDb, 'vendedores', slug(v.nombre));
-        const snap = await fbSdk.getDoc(ref);
-        if(!snap.exists()) continue;
-        const data = snap.data();
-        (data.clients||[]).forEach(c => clientesAll.push({ ...aplicarOverride(c,'clients'), vendedor: v.nombre }));
-        (data.orders||[]).forEach(o => {
-          const conOverride = { ...aplicarOverride(o,'orders'), vendedor: v.nombre };
-          if(!conOverride._eliminado) ordersAll.push(conOverride);
-        });
-      }catch(e){ console.warn('No se pudo leer al vendedor', v.nombre, e); }
-    }
+    const clientesAll = [], ordersAll = [], vendedoresVistos = [];
+    const snapVendedores = await fbSdk.getDocs(fbSdk.collection(fbDb, 'vendedores'));
+    snapVendedores.forEach(docSnap => {
+      const data = docSnap.data();
+      const nombreV = data.nombre || 'Sin nombre';
+      vendedoresVistos.push({ uid: docSnap.id, nombre: nombreV, updatedAt: data.updatedAt || null });
+      (data.clients||[]).forEach(c => clientesAll.push({ ...aplicarOverride(c,'clients'), vendedor: nombreV }));
+      (data.orders||[]).forEach(o => {
+        const conOverride = { ...aplicarOverride(o,'orders'), vendedor: nombreV };
+        if(!conOverride._eliminado) ordersAll.push(conOverride);
+      });
+    });
+    vendedoresConectados = vendedoresVistos;
     cmConsolidado = { clients: clientesAll, orders: ordersAll };
     lastSyncAt = Date.now();
   }catch(e){ console.warn('Error sincronizando casa matriz', e); }
@@ -2245,8 +2203,10 @@ function iniciarSincronizacionAutomatica(){
   if(syncTimer) clearInterval(syncTimer);
   if(!firebaseConfigured()) return;
   syncTimer = setInterval(()=> casaMatrizModo ? sincronizarCasaMatriz() : sincronizarVendedor(), 5*60*1000);
-  // Primera sincronización al abrir, sin esperar el intervalo.
-  (casaMatrizModo ? sincronizarCasaMatriz() : sincronizarVendedor());
+  // Inicializa Firebase ya al abrir la app (sin esperar ninguna acción):
+  // si había una sesión guardada en este dispositivo, onAuthStateChanged
+  // la recupera sola y dispara resolverMiRol() → primera sincronización.
+  cargarFirebase().catch(e => console.warn('No se pudo inicializar Firebase', e));
 }
 
 loadAll();
@@ -2305,14 +2265,13 @@ loadAll();
 
     <div class="opt-section" id="cmSeccionBloqueada">
       <h4>Casa matriz</h4>
-      <button class="link-btn" onclick="abrirClaveCM()">¿Sos casa matriz? Ingresar clave</button>
+      <p style="font-size:12.5px;color:var(--ink-dim);margin:0;">Esta cuenta no tiene permiso de casa matriz. Eso se activa a mano desde la consola de Firebase, no hay clave para ingresarlo acá.</p>
     </div>
 
     <div class="opt-section" id="cmSeccionDesbloqueada" style="display:none;">
       <h4>Casa matriz</h4>
       <button class="btn btn-primary" id="cmModoToggleBtn" style="width:100%;margin-bottom:8px;" onclick="casaMatrizModo ? salirModoCasaMatriz() : activarModoCasaMatriz()">Entrar a modo casa matriz</button>
-      <button class="btn btn-secondary" style="width:100%;margin-bottom:8px;" onclick="abrirGestionVendedores()">Gestionar vendedores</button>
-      <button class="link-btn" style="color:var(--danger);" onclick="revocarCasaMatrizDeEsteDispositivo()">Quitar acceso de este dispositivo</button>
+      <button class="btn btn-secondary" style="width:100%;" onclick="abrirGestionVendedores()">Ver vendedores conectados</button>
     </div>
 
     <div class="font-size-control">
