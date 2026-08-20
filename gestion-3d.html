@@ -2040,22 +2040,7 @@ function abrirGestionVendedores(){
 /* =========================================================
    UI de Opciones: estado de modo / drive / casa matriz
    ========================================================= */
-async function guardarNombreVendedor(){
-  const val = document.getElementById('vendorNameInput').value.trim();
-  vendorName = val;
-  localStorage.setItem(STORAGE_PREFIX + 'vendorName', vendorName);
-  actualizarUIModo();
-  if(fbAuth && fbAuth.currentUser){
-    try{
-      await cargarFirebase();
-      await fbSdk.setDoc(fbSdk.doc(fbDb, 'usuarios', fbAuth.currentUser.uid), { nombre: vendorName }, { merge: true });
-    }catch(e){ console.warn('No se pudo actualizar el nombre en la nube', e); }
-  }
-}
 function actualizarUIModo(){
-  const elVendorInput = document.getElementById('vendorNameInput');
-  if(elVendorInput) elVendorInput.value = vendorName;
-
   // La sección de casa matriz solo se ofrece si la cuenta logueada tiene
   // ese rol asignado en Firestore (usuarios/{uid}.rol === 'casaMatriz').
   // Ya no hay clave: nadie puede auto-otorgárselo desde acá.
@@ -2177,13 +2162,15 @@ async function resolverMiRol(){
     const snap = await fbSdk.getDoc(ref);
     if(snap.exists()){
       miRol = snap.data().rol || 'vendedor';
-      // Mantiene actualizado el nombre visible, sin tocar "rol".
-      if(vendorName && snap.data().nombre !== vendorName){
-        await fbSdk.setDoc(ref, { nombre: vendorName }, { merge: true });
-      }
+      // La cuenta Firebase es la identidad principal. El nombre guardado
+      // solo se conserva como etiqueta histórica para Casa Matriz.
+      vendorName = snap.data().nombre || (fbAuth.currentUser.email||'').split('@')[0];
+      localStorage.setItem(STORAGE_PREFIX + 'vendorName', vendorName);
     }else{
       miRol = 'vendedor';
-      await fbSdk.setDoc(ref, { nombre: vendorName || (fbAuth.currentUser.email||'').split('@')[0], rol: 'vendedor' });
+      vendorName = (fbAuth.currentUser.email||'').split('@')[0];
+      await fbSdk.setDoc(ref, { nombre: vendorName, rol: 'vendedor' });
+      localStorage.setItem(STORAGE_PREFIX + 'vendorName', vendorName);
     }
   }catch(e){
     console.warn('No se pudo resolver el rol de la cuenta', e);
@@ -2438,17 +2425,9 @@ loadAll();
     </p>
 
     <div class="opt-section">
-      <h4>Tu identificación</h4>
-      <div class="field" style="margin-bottom:8px;">
-        <input id="vendorNameInput" placeholder="Ej: Juan, Sucursal Norte">
-      </div>
-      <button class="btn btn-secondary" style="width:100%;" onclick="guardarNombreVendedor()">Guardar identificación</button>
-    </div>
-
-    <div class="opt-section">
-      <h4>Cuenta (necesaria para sincronizar)</h4>
+      <h4>Cuenta y sincronización</h4>
       <div id="loginForm">
-        <p style="font-size:12px;color:var(--ink-dim);margin:0 0 10px;">Sin sesión iniciada, la app funciona igual de forma local, pero no sube ni baja nada de la nube.</p>
+        <p style="font-size:12px;color:var(--ink-dim);margin:0 0 10px;">Iniciá sesión para identificar este dispositivo y cargar los datos de tu cuenta desde la nube.</p>
         <div class="field" style="margin-bottom:8px;">
           <input id="loginEmail" type="email" placeholder="Tu usuario (email)" autocomplete="username">
         </div>
@@ -2460,6 +2439,7 @@ loadAll();
       </div>
       <div id="loginStatus" style="display:none;">
         <p style="font-size:12.5px;color:var(--ink-dim);margin:0 0 10px;">✅ Sesión iniciada como <span id="loginEmailShow" style="color:var(--ink);font-weight:600;"></span></p>
+        <button class="btn btn-primary" id="restaurarNubeBtn" style="width:100%;margin-bottom:10px;" onclick="restaurarManualDesdeNube()">Restaurar mis datos desde la nube</button>
         <button class="btn btn-secondary" style="width:100%;" onclick="cerrarSesion()">Cerrar sesión</button>
       </div>
     </div>
@@ -2474,8 +2454,7 @@ loadAll();
         <span></span>
         <button class="link-btn" onclick="closeSheet('sheetBackup'); openSheet('sheetInstrucciones');">¿Cómo sincronizo?</button>
       </div>
-      <button class="btn btn-secondary" id="restaurarNubeBtn" style="width:100%;margin-top:10px;" onclick="restaurarManualDesdeNube()">Restaurar mis datos desde la nube</button>
-      <p style="font-size:11px;color:var(--ink-dim);margin:6px 0 0;">Usar solo si algo desapareció del celular — trae de vuelta la última copia guardada, reemplazando lo que haya ahora acá.</p>
+      <p style="font-size:11px;color:var(--ink-dim);margin:6px 0 0;">Usalo si este dispositivo no tiene datos locales o si necesitás traer la última copia guardada en la nube.</p>
 
       <div class="field" style="margin-top:14px;">
         <label>¿Usabas otro nombre antes de este cambio de cuentas?</label>
