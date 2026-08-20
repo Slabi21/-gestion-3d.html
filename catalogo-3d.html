@@ -317,6 +317,78 @@
   .detalle-dias{ font-size:0.7812rem; color: var(--ink-dim); margin-top:3px; font-family:'JetBrains Mono',monospace; }
   .detalle-desc{ font-size:0.8438rem; line-height:1.65; color: var(--ink); margin-top:14px; white-space:pre-wrap; word-wrap:break-word; overflow-wrap:break-word; }  .sheet-backdrop#sheetDetalle{ align-items:flex-start; }
 
+  /* ---------- Capa visual v21: más jerarquía, contraste y tacto ---------- */
+  :root{
+    --bg: #15171b;
+    --surface: #20242a;
+    --surface-2: #2a3038;
+    --border: rgba(255,255,255,.10);
+    --accent-soft: rgba(255,122,41,.13);
+    --shadow-card: 0 12px 30px rgba(0,0,0,.18);
+  }
+  html{ scroll-behavior:smooth; }
+  body{
+    background:
+      radial-gradient(circle at 92% -8%, rgba(255,122,41,.12), transparent 30rem),
+      linear-gradient(180deg, #191b20 0%, var(--bg) 44%, #111316 100%);
+    line-height:1.45;
+  }
+  button, input, textarea, select{ -webkit-tap-highlight-color:transparent; }
+  button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-visible{
+    outline:3px solid rgba(255,122,41,.35); outline-offset:2px;
+  }
+  .topbar{
+    background:rgba(25,27,32,.88);
+    backdrop-filter:blur(18px); -webkit-backdrop-filter:blur(18px);
+    box-shadow:0 8px 24px rgba(0,0,0,.12);
+    padding-top:calc(14px + env(safe-area-inset-top));
+  }
+  .topbar h1{ font-size:1.25rem; letter-spacing:-.02em; }
+  .topbar h1 .dot{ width:9px; height:9px; box-shadow:0 0 0 5px var(--accent-soft); }
+  .topbar .sub{ line-height:1.35; }
+  .lock-btn, .footer-gear-btn, .mini-btn{
+    transition:transform .16s ease, background .16s ease, border-color .16s ease, color .16s ease;
+  }
+  .lock-btn:hover, .footer-gear-btn:hover, .mini-btn:hover{ background:var(--accent-soft); color:var(--accent); border-color:rgba(255,122,41,.4); }
+  .lock-btn:active, .footer-gear-btn:active, .mini-btn:active{ transform:scale(.94); }
+  .cat-filter-chip{ transition:background .16s ease, color .16s ease, transform .16s ease; }
+  .cat-filter-chip:hover{ color:var(--ink); border-color:rgba(255,122,41,.4); }
+  .cat-filter-chip:active{ transform:scale(.96); }
+  .container{ padding-top:22px; }
+  .cat-section{ margin-bottom:30px; }
+  .cat-title{ font-size:.8rem; letter-spacing:.1em; }
+  .cat-title::before{ content:""; width:3px; height:16px; border-radius:4px; background:var(--accent); box-shadow:0 0 12px rgba(255,122,41,.5); }
+  .product-grid{ gap:14px; }
+  .product-card{
+    border:1px solid rgba(255,255,255,.055); box-shadow:var(--shadow-card);
+    transition:transform .18s ease, border-color .18s ease, box-shadow .18s ease;
+  }
+  .product-card:hover{ transform:translateY(-3px); border-color:rgba(255,122,41,.3); box-shadow:0 16px 34px rgba(0,0,0,.28); }
+  .product-card:active{ transform:scale(.985); }
+  .product-photo{ background:linear-gradient(135deg, var(--surface-2), #20242a); }
+  .product-photo img{ transition:transform .35s ease; }
+  .product-card:hover .product-photo img{ transform:scale(1.035); }
+  .product-info{ padding:13px 13px 15px; }
+  .product-price{ color:var(--accent); }
+  .fab{ bottom:calc(20px + env(safe-area-inset-bottom)); box-shadow:0 12px 28px rgba(255,122,41,.38), 0 0 0 6px rgba(255,122,41,.08); transition:transform .18s ease, box-shadow .18s ease; }
+  .fab:hover{ transform:translateY(-3px); box-shadow:0 16px 32px rgba(255,122,41,.46), 0 0 0 8px rgba(255,122,41,.08); }
+  .sheet-backdrop{ background:rgba(5,6,8,.72); backdrop-filter:blur(5px); }
+  .sheet{ border:1px solid rgba(255,255,255,.10); border-bottom:0; box-shadow:0 -18px 50px rgba(0,0,0,.36); padding-bottom:calc(24px + env(safe-area-inset-bottom)); }
+  .sheet-handle{ background:rgba(255,255,255,.25); }
+  .sheet h3{ letter-spacing:-.02em; }
+  .field input, .field textarea, .search-wrap input{ transition:border-color .16s ease, box-shadow .16s ease, background .16s ease; }
+  .field input:focus, .field textarea:focus, .search-wrap input:focus{ border-color:rgba(255,122,41,.7); box-shadow:0 0 0 4px var(--accent-soft); background:#303640; outline:none; }
+  .btn{ min-height:46px; transition:transform .16s ease, filter .16s ease, background .16s ease; }
+  .btn:hover{ filter:brightness(1.08); }
+  .btn:active{ transform:scale(.985); }
+  @media (min-width:700px){
+    .topbar{ padding-left:24px; padding-right:24px; }
+    .container{ padding:30px 24px 40px; }
+    .product-grid{ grid-template-columns:repeat(auto-fill,minmax(190px,1fr)); gap:18px; }
+    .sheet{ border-radius:24px; margin-bottom:24px; border-bottom:1px solid rgba(255,255,255,.10); }
+  }
+  @media (prefers-reduced-motion:reduce){ *,*::before,*::after{ animation-duration:.01ms!important; transition-duration:.01ms!important; scroll-behavior:auto!important; } }
+
   .img-zoom-overlay{
     display:none; position:fixed; inset:0; background: rgba(0,0,0,.92); z-index:80;
     align-items:center; justify-content:center; overflow:hidden;
@@ -745,7 +817,7 @@ function esNuevo(p){
 // Número de WhatsApp del negocio para el botón "Consultar" del detalle de
 // producto, en formato internacional sin signos ni espacios (ej: 5491155555555).
 // Mientras esté vacío, el botón avisa que falta configurarlo.
-const WHATSAPP_NUMERO = '5491169837322';
+const WHATSAPP_NUMERO = '';
 
 /* ---------- Subida de fotos a GitHub ---------- */
 const GH_REPO = 'Slabi21/-gestion-3d.html';
