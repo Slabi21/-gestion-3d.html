@@ -716,7 +716,7 @@
     <h3>Compartir catálogo</h3>
     <div class="field">
       <label>Cliente guardado</label>
-      <input id="compartirClienteBuscador" placeholder="Buscar por nombre o teléfono..." oninput="renderCompartirClienteList()">
+      <input id="compartirClienteBuscador" placeholder="Escribí un nombre o teléfono para buscar..." oninput="renderCompartirClienteList()">
     </div>
     <div class="catalog-pick-list" id="compartirClienteList" style="max-height:150px;"></div>
 
@@ -732,7 +732,7 @@
       </div>
       <div class="field" style="display:flex;align-items:center;gap:8px;">
         <input type="checkbox" id="compartirGuardarCheck" style="width:auto;" checked>
-        <label for="compartirGuardarCheck" style="margin:0;font-size:13.5px;color:var(--ink);font-weight:400;">Guardarlo en Clientes para no perderlo</label>
+        <label for="compartirGuardarCheck" style="margin:0;font-size:13.5px;color:var(--ink);font-weight:400;">Guardarlo como posible cliente para no perderlo</label>
       </div>
     </div>
 
@@ -750,9 +750,10 @@
 <div class="sheet-backdrop" id="sheetProspecto">
   <div class="sheet">
     <div class="sheet-handle"></div>
-    <h3>Nuevo posible cliente</h3>
+    <h3 id="prospectoSheetTitle">Nuevo posible cliente</h3>
     <input type="hidden" id="prospectoId">
     <div class="field"><label>Lugar</label><input id="prospectoNombre" placeholder="Ej: Ferretería Don José, Av. 44"></div>
+    <div class="field"><label>Teléfono (opcional)</label><input id="prospectoTelefono" placeholder="11 5555-5555" type="tel"><span class="field-hint">Se agrega +54 9 solo. Escribilo sin el 0 ni el 15 (ej: 11 5555-5555)</span></div>
     <div class="field"><label>Nota</label><textarea id="prospectoNota" placeholder="Vidriera grande, tal vez le interese cartelería 3D..."></textarea></div>
     <div class="field">
       <label>Ubicación (opcional)</label>
@@ -762,6 +763,7 @@
       <span class="field-hint" id="prospectoUbicacionEstado"></span>
     </div>
     <div class="sheet-actions">
+      <button class="btn btn-danger" id="btnEliminarProspectoForm" style="display:none;" onclick="deleteProspecto(document.getElementById('prospectoId').value)">Eliminar</button>
       <button class="btn btn-secondary" onclick="closeSheet('sheetProspecto')">Cancelar</button>
       <button class="btn btn-primary" onclick="saveProspecto()">Guardar</button>
     </div>
@@ -866,7 +868,7 @@
                fecha, estado, createdAt, vendedor}
                // el total del pedido se calcula sumando cantidad*precio
                // de cada producto, no se guarda como campo aparte
-   prospects: {id, nombre, nota, createdAt,
+   prospects: {id, nombre, nota, createdAt, telefono,
                lat, lng}       // <- TODO(Maps): coordenadas al integrar Google Maps
                // (prospectos quedan fuera de la sincronización con Drive
                // por ahora, ver documento de decisiones)
@@ -1612,7 +1614,7 @@ function renderProspects(){
   }
   const sorted = [...prospects].sort((a,b)=> b.createdAt - a.createdAt);
   list.innerHTML = sorted.map(p=>`
-    <div class="card prospect-card">
+    <div class="card prospect-card" onclick="openProspectoForm('${p.id}')">
       <div class="prospect-pin">📍</div>
       <div style="flex:1;">
         <div class="prospect-name">${escapeHtml(p.nombre)}</div>
@@ -1620,19 +1622,26 @@ function renderProspects(){
         <div class="prospect-date">${formatDate(new Date(p.createdAt).toISOString().slice(0,10))}${(p.lat && p.lng) ? ` · <a href="https://maps.google.com/?q=${p.lat},${p.lng}" target="_blank" onclick="event.stopPropagation()" style="color:var(--accent);text-decoration:none;">📍 Ver ubicación</a>` : ''}</div>
       </div>
       <div style="display:flex;flex-direction:column;gap:6px;flex:none;">
-        <button class="btn btn-secondary" style="padding:6px 10px;font-size:11.5px;" onclick="convertirProspectoEnCliente('${p.id}')">→ Cliente</button>
-        <button class="btn btn-danger" style="padding:6px 10px;font-size:12px;" onclick="deleteProspecto('${p.id}')">✕</button>
+        ${p.telefono ? `<button class="btn btn-secondary" style="padding:6px 10px;font-size:13px;" onclick="event.stopPropagation(); abrirWhatsapp('${p.telefono.replace(/[^\d]/g,'')}')" title="Contactar por WhatsApp">💬</button>` : ''}
+        <button class="btn btn-secondary" style="padding:6px 10px;font-size:11.5px;" onclick="event.stopPropagation(); convertirProspectoEnCliente('${p.id}')">→ Cliente</button>
+        <button class="btn btn-danger" style="padding:6px 10px;font-size:12px;" onclick="event.stopPropagation(); deleteProspecto('${p.id}')">✕</button>
       </div>
     </div>
   `).join('');
 }
 
-function openProspectoForm(){
-  document.getElementById('prospectoNombre').value = '';
-  document.getElementById('prospectoNota').value = '';
-  document.getElementById('prospectoLat').value = '';
-  document.getElementById('prospectoLng').value = '';
-  document.getElementById('prospectoUbicacionEstado').textContent = '';
+function openProspectoForm(id){
+  document.getElementById('prospectoSheetTitle').textContent = id ? 'Editar posible cliente' : 'Nuevo posible cliente';
+  document.getElementById('prospectoId').value = id || '';
+  const p = id ? prospects.find(x=>x.id===id) : null;
+  document.getElementById('prospectoNombre').value = p?.nombre || '';
+  document.getElementById('prospectoTelefono').value = p?.telefono || '';
+  document.getElementById('prospectoNota').value = p?.nota || '';
+  document.getElementById('prospectoLat').value = p?.lat ?? '';
+  document.getElementById('prospectoLng').value = p?.lng ?? '';
+  document.getElementById('prospectoUbicacionEstado').textContent = (p?.lat && p?.lng) ? '✅ Tiene ubicación guardada' : '';
+  const btnEliminar = document.getElementById('btnEliminarProspectoForm');
+  if(btnEliminar) btnEliminar.style.display = id ? '' : 'none';
   openSheet('sheetProspecto');
 }
 
@@ -1665,16 +1674,22 @@ function capturarUbicacionProspecto(){
 async function saveProspecto(){
   const nombre = document.getElementById('prospectoNombre').value.trim();
   if(!nombre){ alert('Poné el nombre o dirección del lugar'); return; }
+  const id = document.getElementById('prospectoId').value;
   const latVal = document.getElementById('prospectoLat').value;
   const lngVal = document.getElementById('prospectoLng').value;
-  prospects.push({
-    id: uid(),
+  const data = {
     nombre,
+    telefono: normalizarTelefonoAR(document.getElementById('prospectoTelefono').value),
     nota: document.getElementById('prospectoNota').value.trim(),
-    createdAt: Date.now(),
     lat: latVal ? Number(latVal) : null,
     lng: lngVal ? Number(lngVal) : null,
-  });
+  };
+  if(id){
+    const idx = prospects.findIndex(p=>p.id===id);
+    if(idx>-1) prospects[idx] = { ...prospects[idx], ...data };
+  }else{
+    prospects.push({ id: uid(), createdAt: Date.now(), ...data });
+  }
   await persist('prospects', prospects);
   renderProspects();
   closeSheet('sheetProspecto');
@@ -1686,14 +1701,18 @@ function convertirProspectoEnCliente(id){
   if(!p) return;
   openClienteForm();
   document.getElementById('clienteNombre').value = p.nombre;
+  document.getElementById('clienteTelefono').value = p.telefono || '';
   document.getElementById('clienteNotas').value = p.nota || '';
   document.getElementById('clienteProspectoOrigen').value = id;
 }
 
 async function deleteProspecto(id){
+  if(!id) return;
+  if(!confirm('¿Eliminar este posible cliente?')) return;
   prospects = prospects.filter(p=>p.id!==id);
   await persist('prospects', prospects);
   renderProspects();
+  closeSheet('sheetProspecto');
 }
 
 /* ---------- NAV / SHEETS / HELPERS ---------- */
@@ -2239,6 +2258,38 @@ window.restaurarDesdeNombreViejo = async function(){
   }
 };
 
+// Herramienta de recuperación exclusiva de casa matriz: esta cuenta puede
+// leer y escribir CUALQUIER documento de la colección "vendedores" (ver
+// reglas de Firestore), así que puede rescatar un documento viejo/huérfano
+// y copiarlo a la cuenta de destino que corresponda.
+window.copiarDatosVendedorViejo = async function(){
+  const idViejo = document.getElementById('idViejoInput').value.trim();
+  const uidDestino = document.getElementById('uidDestinoInput').value.trim();
+  if(!idViejo || !uidDestino){ alert('Completá los dos campos: el ID viejo y el UID de destino.'); return; }
+  try{
+    await cargarFirebase();
+    if(miRol !== 'casaMatriz'){ alert('Esta herramienta es solo para la cuenta de casa matriz.'); return; }
+    const refViejo = fbSdk.doc(fbDb, 'vendedores', idViejo);
+    const snap = await fbSdk.getDoc(refViejo);
+    if(!snap.exists()){ alert(`No se encontró ningún documento con el ID "${idViejo}".`); return; }
+    const data = snap.data();
+    const resumen = `${(data.clients||[]).length} clientes, ${(data.orders||[]).length} pedidos, ${(data.prospects||[]).length} prospectos`;
+    if(!confirm(`"${idViejo}" tiene ${resumen}.\n\nEsto va a REEMPLAZAR lo que tenga ahora la cuenta destino (${uidDestino}) por esto. ¿Continuar?`)) return;
+    const refDestino = fbSdk.doc(fbDb, 'vendedores', uidDestino);
+    await fbSdk.setDoc(refDestino, {
+      nombre: data.nombre || 'vendedor',
+      clients: Array.isArray(data.clients) ? data.clients : [],
+      orders: Array.isArray(data.orders) ? data.orders : [],
+      prospects: Array.isArray(data.prospects) ? data.prospects : [],
+      updatedAt: Date.now()
+    });
+    alert('Listo. Ahora esa persona puede tocar "Restaurar mis datos desde la nube" en Opciones de su celular para traerlos.');
+  }catch(e){
+    console.warn(e);
+    alert('No se pudo copiar. Revisá tu conexión e intentá de nuevo.');
+  }
+};
+
 async function sincronizarVendedor(){
   if(!firebaseConfigured()) return;
   try{
@@ -2383,6 +2434,13 @@ loadAll();
       <h4>Casa matriz</h4>
       <button class="btn btn-primary" id="cmModoToggleBtn" style="width:100%;margin-bottom:8px;" onclick="casaMatrizModo ? salirModoCasaMatriz() : activarModoCasaMatriz()">Entrar a modo casa matriz</button>
       <button class="btn btn-secondary" style="width:100%;" onclick="abrirGestionVendedores()">Ver vendedores conectados</button>
+      <div class="field" style="margin-top:14px;">
+        <label>Herramienta de recuperación (copiar datos de un documento viejo)</label>
+        <input id="idViejoInput" placeholder="ID del documento viejo (ej: carlos)">
+        <input id="uidDestinoInput" placeholder="UID de la cuenta destino" style="margin-top:6px;">
+        <span class="field-hint">Solo casa matriz puede leer documentos de otras cuentas. Esto busca el ID viejo, te muestra cuánto tiene, y si confirmás lo copia a la cuenta destino (pisando lo que tenga ahí).</span>
+      </div>
+      <button class="btn btn-secondary" style="width:100%;" onclick="copiarDatosVendedorViejo()">Buscar y copiar a la cuenta destino</button>
     </div>
 
     <div class="font-size-control">
@@ -2436,13 +2494,18 @@ document.getElementById('shareCatalogBtn').addEventListener('click', ()=>{
 function renderCompartirClienteList(){
   const q = (document.getElementById('compartirClienteBuscador').value || '').toLowerCase().trim();
   const cont = document.getElementById('compartirClienteList');
+  if(!q){
+    // Sin nada escrito no se muestra ningún contacto: evita la lista larga
+    // y confusa apenas se abre el selector. Solo aparecen resultados a
+    // medida que se escribe un nombre o teléfono.
+    cont.innerHTML = '';
+    return;
+  }
   const fuente = casaMatrizModo ? cmConsolidado.clients : clients;
   let lista = fuente.filter(c => c.telefono);
-  if(q){
-    lista = lista.filter(c => (c.nombre||'').toLowerCase().includes(q) || (c.telefono||'').toLowerCase().includes(q));
-  }
+  lista = lista.filter(c => (c.nombre||'').toLowerCase().includes(q) || (c.telefono||'').toLowerCase().includes(q));
   if(!lista.length){
-    cont.innerHTML = `<div style="font-size:12.5px;color:var(--ink-dim);padding:8px 2px;">${fuente.length ? 'No hay clientes con teléfono que coincidan.' : 'Todavía no tenés clientes guardados.'}</div>`;
+    cont.innerHTML = `<div style="font-size:12.5px;color:var(--ink-dim);padding:8px 2px;">Sin resultados para "${escapeHtml(q)}".</div>`;
     return;
   }
   cont.innerHTML = lista.slice(0, 30).map(c => `
@@ -2481,16 +2544,19 @@ window.confirmarCompartirCatalogo = async function(){
   if(digits.length < 12){ document.getElementById('compartirError').textContent = 'Revisá el número, parece incompleto.'; return; }
 
   // Si es un número nuevo (no venía de la lista de clientes) y tildaron
-  // guardarlo, lo suma a Clientes ahí mismo para no perder el contacto.
+  // guardarlo, lo suma a Posibles clientes (no a Clientes directamente):
+  // recién se vuelve cliente cuando el vendedor lo confirma a mano con
+  // "→ Cliente" en la pestaña de Prospectos.
   if(!compartirClienteSeleccionado && !casaMatrizModo && document.getElementById('compartirGuardarCheck').checked){
     const nombre = document.getElementById('compartirNombreNuevo').value.trim() || 'Sin nombre';
-    clients.push({
-      id: uid(), createdAt: Date.now(), documentoUrl: null, vendedor: vendorName || null,
-      nombre, telefono: telefonoNormalizado, email: '', direccion: '',
-      notas: 'Contacto guardado al compartir el catálogo.',
+    prospects.push({
+      id: uid(), createdAt: Date.now(),
+      nombre, telefono: telefonoNormalizado,
+      nota: 'Contacto guardado al compartir el catálogo.',
+      lat: null, lng: null,
     });
-    await persist('clients', clients);
-    renderClients();
+    await persist('prospects', prospects);
+    renderProspects();
   }
 
   const texto = 'Mirá nuestro catálogo de productos 3D:';
