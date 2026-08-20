@@ -897,7 +897,7 @@
 
     <div class="instr-group">
       <h4><span class="instr-icon">🔄</span>Paso 3 — Usar la sincronización</h4>
-      <div class="instr-step"><span class="instr-num">1</span><span class="instr-text">Cada vendedor carga su nombre en Opciones → <b>Tu identificación</b> (esto es solo la etiqueta que se muestra, no da acceso a nada).</span></div>
+      <div class="instr-step"><span class="instr-num">1</span><span class="instr-text">Cada vendedor entra en Opciones → <b>Cuenta y sincronización</b> e inicia sesión con su correo y contraseña.</span></div>
       <div class="instr-step"><span class="instr-num">2</span><span class="instr-text">Además, en Opciones → <b>Cuenta</b>, inicia sesión con el email y la contraseña que le crearon en Firebase (paso 2.4 de arriba). Sin esta sesión, la app funciona igual de forma local, pero no sincroniza nada contra la nube.</span></div>
       <div class="instr-step"><span class="instr-num">3</span><span class="instr-text">Una vez logueado, la app sube sus datos solos cada <b>5 minutos</b> mientras haya internet. También se puede tocar <b>Sincronizar ahora</b> para forzarlo al toque. La sesión queda guardada en el celular: no hace falta volver a loguearse cada vez que se abre la app.</span></div>
       <div class="instr-step"><span class="instr-num">4</span><span class="instr-text">Casa matriz agrega a cada vendedor desde <b>Gestionar vendedores</b>, cargando exactamente el mismo nombre que ese vendedor puso en su propia app (esto sigue siendo independiente de la cuenta de acceso).</span></div>
@@ -2265,46 +2265,6 @@ window.restaurarManualDesdeNube = async function(){
 // datos en la nube bajo el nombre que había tipeado en "Tu identificación"
 // (no bajo la cuenta). Si alguien tiene datos viejos huérfanos ahí, esto
 // los trae y los vuelve a guardar ya bajo la cuenta nueva.
-function slugViejo(s){
-  return (s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,'') || 'x';
-}
-window.restaurarDesdeNombreViejo = async function(){
-  const input = document.getElementById('nombreViejoInput');
-  const nombreViejo = input.value.trim();
-  const btn = document.getElementById('restaurarNombreViejoBtn');
-  if(!nombreViejo){ alert('Escribí el nombre que usabas antes en "Tu identificación".'); return; }
-  if(btn){ btn.disabled = true; btn.textContent = 'Buscando...'; }
-  try{
-    await cargarFirebase();
-    if(!fbAuth.currentUser){ alert('Iniciá sesión primero.'); return; }
-    const idViejo = slugViejo(nombreViejo);
-    const ref = fbSdk.doc(fbDb, 'vendedores', idViejo);
-    const snap = await fbSdk.getDoc(ref);
-    if(!snap.exists()){ alert(`No se encontró ninguna copia vieja guardada como "${nombreViejo}".`); return; }
-    const data = snap.data();
-    const resumen = `${(data.clients||[]).length} clientes, ${(data.orders||[]).length} pedidos, ${(data.prospects||[]).length} prospectos`;
-    if(!confirm(`Se encontró una copia vieja con ${resumen}. Esto va a REEMPLAZAR lo que tenés ahora en este celular. ¿Continuar?`)) return;
-    clients = Array.isArray(data.clients) ? data.clients : [];
-    orders = Array.isArray(data.orders) ? data.orders : [];
-    prospects = Array.isArray(data.prospects) ? data.prospects : [];
-    await persist('clients', clients);
-    await persist('orders', orders);
-    await persist('prospects', prospects);
-    renderAll();
-    // La guarda ya mismo bajo la cuenta nueva, para que de acá en más
-    // quede todo unificado ahí y no dependa más del nombre viejo.
-    await subirDatosPropios();
-    lastSyncAt = Date.now();
-    actualizarUISync();
-    alert('Listo, se restauraron los datos y ya quedaron guardados bajo tu cuenta.');
-  }catch(e){
-    console.warn(e);
-    alert('No se pudo restaurar. Revisá tu conexión e intentá de nuevo.');
-  }finally{
-    if(btn){ btn.disabled = false; btn.textContent = 'Buscar y restaurar'; }
-  }
-};
-
 // Herramienta de recuperación exclusiva de casa matriz: esta cuenta puede
 // leer y escribir CUALQUIER documento de la colección "vendedores" (ver
 // reglas de Firestore), así que puede rescatar un documento viejo/huérfano
@@ -2456,12 +2416,6 @@ loadAll();
       </div>
       <p style="font-size:11px;color:var(--ink-dim);margin:6px 0 0;">Usalo si este dispositivo no tiene datos locales o si necesitás traer la última copia guardada en la nube.</p>
 
-      <div class="field" style="margin-top:14px;">
-        <label>¿Usabas otro nombre antes de este cambio de cuentas?</label>
-        <input id="nombreViejoInput" placeholder="Ej: carlos">
-        <span class="field-hint">Si tus datos quedaron guardados con un nombre viejo (de antes de tener usuario y contraseña), escribilo acá para recuperarlos y que pasen a tu cuenta actual.</span>
-      </div>
-      <button class="btn btn-secondary" id="restaurarNombreViejoBtn" style="width:100%;" onclick="restaurarDesdeNombreViejo()">Buscar y restaurar</button>
     </div>
 
     <div class="opt-section" id="cmSeccionBloqueada">
