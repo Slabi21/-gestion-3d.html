@@ -2157,11 +2157,113 @@ async function leerOverridesPropios(){
   overridesData = (snap.exists() && snap.data().overrides) ? snap.data().overrides : { clients:{}, orders:{} };
   localStorage.setItem(STORAGE_PREFIX + 'overridesCache', JSON.stringify(overridesData));
 }
+
+// Trae de vuelta al celular lo que haya guardado en la nube para esta
+// cuenta (clientes, pedidos y prospectos). Devuelve true si encontró y
+// restauró algo, false si no había nada o falló.
+async function restaurarDesdeNube(pedirConfirmacion){
+  await cargarFirebase();
+  if(!fbAuth.currentUser) return false;
+  const ref = fbSdk.doc(fbDb, 'vendedores', fbAuth.currentUser.uid);
+  const snap = await fbSdk.getDoc(ref);
+  if(!snap.exists()) return false;
+  const data = snap.data();
+  if(pedirConfirmacion){
+    const resumen = `${(data.clients||[]).length} clientes, ${(data.orders||[]).length} pedidos, ${(data.prospects||[]).length} prospectos`;
+    if(!confirm(`Esto va a REEMPLAZAR lo que tenés ahora en este celular por la copia guardada en la nube (${resumen}). ¿Continuar?`)) return false;
+  }
+  clients = Array.isArray(data.clients) ? data.clients : [];
+  orders = Array.isArray(data.orders) ? data.orders : [];
+  prospects = Array.isArray(data.prospects) ? data.prospects : [];
+  await persist('clients', clients);
+  await persist('orders', orders);
+  await persist('prospects', prospects);
+  renderAll();
+  return true;
+}
+window.restaurarManualDesdeNube = async function(){
+  const btn = document.getElementById('restaurarNubeBtn');
+  if(btn){ btn.disabled = true; btn.textContent = 'Restaurando...'; }
+  try{
+    const ok = await restaurarDesdeNube(true);
+    if(ok) alert('Listo, se restauraron los datos guardados en la nube.');
+  }catch(e){
+    console.warn(e);
+    alert('No se pudo restaurar. Revisá tu conexión e intentá de nuevo.');
+  }finally{
+    if(btn){ btn.disabled = false; btn.textContent = 'Restaurar mis datos desde la nube'; }
+  }
+};
+
+// Recuperación puntual: antes del login real, cada celular guardaba sus
+// datos en la nube bajo el nombre que había tipeado en "Tu identificación"
+// (no bajo la cuenta). Si alguien tiene datos viejos huérfanos ahí, esto
+// los trae y los vuelve a guardar ya bajo la cuenta nueva.
+function slugViejo(s){
+  return (s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,'') || 'x';
+}
+window.restaurarDesdeNombreViejo = async function(){
+  const input = document.getElementById('nombreViejoInput');
+  const nombreViejo = input.value.trim();
+  const btn = document.getElementById('restaurarNombreViejoBtn');
+  if(!nombreViejo){ alert('Escribí el nombre que usabas antes en "Tu identificación".'); return; }
+  if(btn){ btn.disabled = true; btn.textContent = 'Buscando...'; }
+  try{
+    await cargarFirebase();
+    if(!fbAuth.currentUser){ alert('Iniciá sesión primero.'); return; }
+    const idViejo = slugViejo(nombreViejo);
+    const ref = fbSdk.doc(fbDb, 'vendedores', idViejo);
+    const snap = await fbSdk.getDoc(ref);
+    if(!snap.exists()){ alert(`No se encontró ninguna copia vieja guardada como "${nombreViejo}".`); return; }
+    const data = snap.data();
+    const resumen = `${(data.clients||[]).length} clientes, ${(data.orders||[]).length} pedidos, ${(data.prospects||[]).length} prospectos`;
+    if(!confirm(`Se encontró una copia vieja con ${resumen}. Esto va a REEMPLAZAR lo que tenés ahora en este celular. ¿Continuar?`)) return;
+    clients = Array.isArray(data.clients) ? data.clients : [];
+    orders = Array.isArray(data.orders) ? data.orders : [];
+    prospects = Array.isArray(data.prospects) ? data.prospects : [];
+    await persist('clients', clients);
+    await persist('orders', orders);
+    await persist('prospects', prospects);
+    renderAll();
+    // La guarda ya mismo bajo la cuenta nueva, para que de acá en más
+    // quede todo unificado ahí y no dependa más del nombre viejo.
+    await subirDatosPropios();
+    lastSyncAt = Date.now();
+    actualizarUISync();
+    alert('Listo, se restauraron los datos y ya quedaron guardados bajo tu cuenta.');
+  }catch(e){
+    console.warn(e);
+    alert('No se pudo restaurar. Revisá tu conexión e intentá de nuevo.');
+  }finally{
+    if(btn){ btn.disabled = false; btn.textContent = 'Buscar y restaurar'; }
+  }
+};
+
 async function sincronizarVendedor(){
   if(!firebaseConfigured()) return;
   try{
     await cargarFirebase();
     if(!fbAuth.currentUser){ actualizarUISync(); return; } // sin sesión: no sincroniza, pero la app sigue andando local
+
+    // Traba de seguridad: si en este celular no hay NADA cargado (clientes,
+    // pedidos y prospectos vacíos), nunca se sube así nomás — podría ser un
+    // celular nuevo (nada que perder) pero también podría ser que se vació
+    // la copia local por accidente, y subir eso pisaría la copia buena que
+    // ya estaba guardada en la nube. En ese caso se restaura sola desde la
+    // nube en vez de subir el vacío.
+    const localVacioDelTodo = clients.length === 0 && orders.length === 0 && prospects.length === 0;
+    if(localVacioDelTodo){
+      const restaurado = await restaurarDesdeNube(false);
+      if(restaurado){
+        lastSyncAt = Date.now();
+        renderAll();
+        actualizarUISync();
+        return;
+      }
+      // Si no había nada tampoco en la nube, es un celular realmente nuevo:
+      // sigue de largo y sube (no hay nada que perder).
+    }
+
     await subirDatosPropios();
     await leerOverridesPropios();
     lastSyncAt = Date.now();
@@ -2261,6 +2363,15 @@ loadAll();
         <span></span>
         <button class="link-btn" onclick="closeSheet('sheetBackup'); openSheet('sheetInstrucciones');">¿Cómo sincronizo?</button>
       </div>
+      <button class="btn btn-secondary" id="restaurarNubeBtn" style="width:100%;margin-top:10px;" onclick="restaurarManualDesdeNube()">Restaurar mis datos desde la nube</button>
+      <p style="font-size:11px;color:var(--ink-dim);margin:6px 0 0;">Usar solo si algo desapareció del celular — trae de vuelta la última copia guardada, reemplazando lo que haya ahora acá.</p>
+
+      <div class="field" style="margin-top:14px;">
+        <label>¿Usabas otro nombre antes de este cambio de cuentas?</label>
+        <input id="nombreViejoInput" placeholder="Ej: carlos">
+        <span class="field-hint">Si tus datos quedaron guardados con un nombre viejo (de antes de tener usuario y contraseña), escribilo acá para recuperarlos y que pasen a tu cuenta actual.</span>
+      </div>
+      <button class="btn btn-secondary" id="restaurarNombreViejoBtn" style="width:100%;" onclick="restaurarDesdeNombreViejo()">Buscar y restaurar</button>
     </div>
 
     <div class="opt-section" id="cmSeccionBloqueada">
