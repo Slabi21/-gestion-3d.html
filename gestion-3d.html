@@ -2545,7 +2545,7 @@ async function sincronizarCasaMatriz(){
 function iniciarSincronizacionAutomatica(){
   if(syncTimer) clearInterval(syncTimer);
   if(!firebaseConfigured()) return;
-  syncTimer = setInterval(()=> casaMatrizModo ? sincronizarCasaMatriz() : sincronizarVendedor(), 5*60*1000);
+  syncTimer = setInterval(()=> casaMatrizModo ? sincronizarCasaMatriz() : sincronizarVendedor(), 3*60*1000);
   // Inicializa Firebase ya al abrir la app (sin esperar ninguna acción):
   // si había una sesión guardada en este dispositivo, onAuthStateChanged
   // la recupera sola y dispara resolverMiRol() → primera sincronización.
