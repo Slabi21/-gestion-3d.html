@@ -1108,6 +1108,16 @@ async function loadAll(){
     prospects = p ? JSON.parse(p) : [];
   }catch(e){ prospects = []; }
 
+  const normClients = normalizarRegistros(clients, 'clients');
+  const normOrders = normalizarRegistros(orders, 'orders');
+  const normProspects = normalizarRegistros(prospects, 'prospects');
+  clients = normClients.out;
+  orders = normOrders.out;
+  prospects = normProspects.out;
+  if(normClients.changed) await persist('clients', clients);
+  if(normOrders.changed) await persist('orders', orders);
+  if(normProspects.changed) await persist('prospects', prospects);
+
   vendorName = localStorage.getItem(STORAGE_PREFIX + 'vendorName') || '';
   // Preferencia de "última vista usada" en este dispositivo — se confirma
   // (o se corrige) apenas se sabe el rol real de la cuenta logueada, ver
@@ -1128,6 +1138,102 @@ async function persist(key, data){
     console.error('Error guardando', key, e);
     alert('No se pudo guardar. Puede que el navegador esté sin espacio o en modo privado.');
   }
+}
+
+/* ---------- Metadatos y combinación segura entre dispositivos ---------- */
+const ACTIVE_UID_KEY = STORAGE_PREFIX + 'activeUid';
+const DEVICE_ID_KEY = STORAGE_PREFIX + 'deviceId';
+let deviceId = localStorage.getItem(DEVICE_ID_KEY);
+if(!deviceId){
+  deviceId = uid();
+  localStorage.setItem(DEVICE_ID_KEY, deviceId);
+}
+
+const SYNC_FIELDS = {
+  clients: ['nombre','telefono','email','direccion','notas','vendedor'],
+  orders: ['clienteId','items','fecha','estado','cobrado'],
+  prospects: ['nombre','telefono','nota','lat','lng'],
+};
+
+function normalizarRegistros(arr, tipo){
+  let changed = false;
+  const ahora = Date.now();
+  const out = (Array.isArray(arr) ? arr : []).map(r=>{
+    if(!r || !r.id) return r;
+    const updatedAt = Number(r.updatedAt) || Number(r.createdAt) || ahora;
+    const updatedBy = r.updatedBy || 'legacy';
+    if(r.updatedAt !== updatedAt || r.updatedBy !== updatedBy) changed = true;
+    return { ...r, updatedAt, updatedBy };
+  }).filter(Boolean);
+  return { out, changed };
+}
+
+function registroComparable(record, tipo){
+  const fields = SYNC_FIELDS[tipo] || [];
+  const data = {};
+  fields.forEach(k=>{ data[k] = record?.[k] ?? null; });
+  return JSON.stringify(data);
+}
+
+function valorVisibleCambio(valor){
+  if(valor === '' || valor == null) return '—';
+  if(typeof valor === 'boolean') return valor ? 'Sí' : 'No';
+  if(Array.isArray(valor)) return valor.map(x=>x?.nombre || JSON.stringify(x)).join(', ') || '—';
+  return String(valor);
+}
+
+function diferenciasRegistro(local, remoto, tipo){
+  const labels = { nombre:'Nombre', telefono:'Teléfono', email:'Email', direccion:'Dirección', notas:'Notas', vendedor:'Vendedor', clienteId:'Cliente', items:'Productos', fecha:'Entrega', estado:'Estado', cobrado:'Cobrado', nota:'Nota', lat:'Latitud', lng:'Longitud' };
+  return (SYNC_FIELDS[tipo] || []).filter(k=>JSON.stringify(local?.[k] ?? null) !== JSON.stringify(remoto?.[k] ?? null)).map(k =>
+    `${labels[k] || k}: ${valorVisibleCambio(local?.[k])} → ${valorVisibleCambio(remoto?.[k])}`
+  );
+}
+
+function marcaTiempoConflicto(ts, otroTs){
+  const d = new Date(Number(ts) || Date.now());
+  const otro = new Date(Number(otroTs) || Date.now());
+  if(d.toDateString() === otro.toDateString()){
+    return d.toLocaleTimeString('es-AR', {hour:'2-digit', minute:'2-digit'});
+  }
+  return d.toLocaleDateString('es-AR', {day:'2-digit', month:'2-digit', year:'numeric'});
+}
+
+function combinarRegistros(locales, remotos, tipo){
+  const localMap = new Map((locales||[]).map(r=>[r.id,r]));
+  const remoteMap = new Map((remotos||[]).map(r=>[r.id,r]));
+  const ids = new Set([...localMap.keys(), ...remoteMap.keys()]);
+  const result = [];
+  const conflicts = [];
+
+  ids.forEach(id=>{
+    const local = localMap.get(id);
+    const remoto = remoteMap.get(id);
+    if(!local){ result.push(remoto); return; }
+    if(!remoto){ result.push(local); return; }
+    if(registroComparable(local, tipo) === registroComparable(remoto, tipo)){
+      result.push(Number(local.updatedAt) >= Number(remoto.updatedAt) ? local : remoto);
+      return;
+    }
+    const localAt = Number(local.updatedAt) || Number(local.createdAt) || 0;
+    const remoteAt = Number(remoto.updatedAt) || Number(remoto.createdAt) || 0;
+    const winner = localAt >= remoteAt ? local : remoto;
+    result.push(winner);
+    conflicts.push({ tipo, local, remoto, winner, diferencias: diferenciasRegistro(local, remoto, tipo) });
+  });
+  return { result, conflicts };
+}
+
+function mostrarResumenConflictos(conflicts){
+  if(!conflicts.length) return;
+  const lineas = conflicts.slice(0, 8).map(c=>{
+    const nombre = c.local?.nombre || c.remoto?.nombre || c.local?.id || c.remoto?.id || 'Registro';
+    const localAt = c.local?.updatedAt || c.local?.createdAt;
+    const remoteAt = c.remoto?.updatedAt || c.remoto?.createdAt;
+    const ganador = c.winner === c.local ? 'este dispositivo' : 'la nube';
+    return `${nombre}\n${c.diferencias.slice(0,3).join('\n')}\nEste dispositivo: ${marcaTiempoConflicto(localAt, remoteAt)} · Nube: ${marcaTiempoConflicto(remoteAt, localAt)}\nSe conservó: ${ganador}`;
+  });
+  const extra = conflicts.length > 8 ? `\n\nY ${conflicts.length - 8} conflicto(s) más.` : '';
+  alert(`Se combinaron datos de varios dispositivos.\n\n${lineas.join('\n\n')}${extra}`);
 }
 
 function renderAll(){
@@ -1259,9 +1365,9 @@ async function saveCliente(){
 
   if(id){
     const idx = clients.findIndex(c=>c.id===id);
-    clients[idx] = { ...clients[idx], ...data };
+    clients[idx] = { ...clients[idx], ...data, updatedAt: Date.now(), updatedBy: deviceId };
   }else{
-    clients.push({ id: uid(), createdAt: Date.now(), documentoUrl: null, vendedor: vendorName || null, ...data });
+    clients.push({ id: uid(), createdAt: Date.now(), updatedAt: Date.now(), updatedBy: deviceId, documentoUrl: null, vendedor: vendorName || null, ...data });
   }
   await persist('clients', clients);
 
@@ -1607,9 +1713,9 @@ async function savePedido(){
     const historialEstados = data.estado !== anterior.estado
       ? pushHistorial(anterior.historialEstados, data.estado)
       : anterior.historialEstados;
-    orders[idx] = { ...anterior, ...data, historialEstados };
+    orders[idx] = { ...anterior, ...data, historialEstados, updatedAt: Date.now(), updatedBy: deviceId };
   }else{
-    orders.push({ id: uid(), createdAt: Date.now(), vendedor: vendorName || null, historialEstados: [{ estado: data.estado, at: Date.now() }], ...data });
+    orders.push({ id: uid(), createdAt: Date.now(), updatedAt: Date.now(), updatedBy: deviceId, vendedor: vendorName || null, historialEstados: [{ estado: data.estado, at: Date.now() }], ...data });
   }
   await persist('orders', orders);
   renderOrders();
@@ -1647,6 +1753,8 @@ async function cycleStatus(id){
   const order = orders.find(o=>o.id===id);
   order.estado = order_states[(order_states.indexOf(order.estado)+1) % 3];
   order.historialEstados = pushHistorial(order.historialEstados, order.estado);
+  order.updatedAt = Date.now();
+  order.updatedBy = deviceId;
   await persist('orders', orders);
   renderOrders();
 }
@@ -1660,6 +1768,8 @@ async function toggleCobrado(id){
   }
   const order = orders.find(o=>o.id===id);
   order.cobrado = !order.cobrado;
+  order.updatedAt = Date.now();
+  order.updatedBy = deviceId;
   await persist('orders', orders);
   renderOrders();
 }
@@ -1746,9 +1856,9 @@ async function saveProspecto(){
   };
   if(id){
     const idx = prospects.findIndex(p=>p.id===id);
-    if(idx>-1) prospects[idx] = { ...prospects[idx], ...data };
+    if(idx>-1) prospects[idx] = { ...prospects[idx], ...data, updatedAt: Date.now(), updatedBy: deviceId };
   }else{
-    prospects.push({ id: uid(), createdAt: Date.now(), ...data });
+    prospects.push({ id: uid(), createdAt: Date.now(), updatedAt: Date.now(), updatedBy: deviceId, ...data });
   }
   await persist('prospects', prospects);
   renderProspects();
@@ -2158,6 +2268,19 @@ async function resolverMiRol(){
     await cargarFirebase();
     const uid = fbAuth.currentUser?.uid;
     if(!uid) return;
+    const previousUid = localStorage.getItem(ACTIVE_UID_KEY);
+    if(previousUid && previousUid !== uid){
+      // No mezclar datos locales de otra cuenta cuando se cambia de usuario
+      // en el mismo navegador. La cuenta nueva se recupera desde su propia
+      // copia en la nube en la sincronización siguiente.
+      clients = [];
+      orders = [];
+      prospects = [];
+      await persist('clients', clients);
+      await persist('orders', orders);
+      await persist('prospects', prospects);
+    }
+    localStorage.setItem(ACTIVE_UID_KEY, uid);
     const ref = fbSdk.doc(fbDb, 'usuarios', uid);
     const snap = await fbSdk.getDoc(ref);
     if(snap.exists()){
@@ -2302,29 +2425,29 @@ async function sincronizarVendedor(){
   try{
     await cargarFirebase();
     if(!fbAuth.currentUser){ actualizarUISync(); return; } // sin sesión: no sincroniza, pero la app sigue andando local
-
-    // Traba de seguridad: si en este celular no hay NADA cargado (clientes,
-    // pedidos y prospectos vacíos), nunca se sube así nomás — podría ser un
-    // celular nuevo (nada que perder) pero también podría ser que se vació
-    // la copia local por accidente, y subir eso pisaría la copia buena que
-    // ya estaba guardada en la nube. En ese caso se restaura sola desde la
-    // nube en vez de subir el vacío.
-    const localVacioDelTodo = clients.length === 0 && orders.length === 0 && prospects.length === 0;
-    if(localVacioDelTodo){
-      const restaurado = await restaurarDesdeNube(false);
-      if(restaurado){
-        lastSyncAt = Date.now();
-        renderAll();
-        actualizarUISync();
-        return;
-      }
-      // Si no había nada tampoco en la nube, es un celular realmente nuevo:
-      // sigue de largo y sube (no hay nada que perder).
-    }
-
+    // Lee primero la copia remota y combina por ID. Así un dispositivo con
+    // datos viejos no pisa los registros nuevos creados desde otro equipo.
+    const ref = fbSdk.doc(fbDb, 'vendedores', fbAuth.currentUser.uid);
+    const snap = await fbSdk.getDoc(ref);
+    const remoto = snap.exists() ? snap.data() : {};
+    const remoteClients = normalizarRegistros(remoto.clients, 'clients').out;
+    const remoteOrders = normalizarRegistros(remoto.orders, 'orders').out;
+    const remoteProspects = normalizarRegistros(remoto.prospects, 'prospects').out;
+    const mergedClients = combinarRegistros(clients, remoteClients, 'clients');
+    const mergedOrders = combinarRegistros(orders, remoteOrders, 'orders');
+    const mergedProspects = combinarRegistros(prospects, remoteProspects, 'prospects');
+    const conflicts = [...mergedClients.conflicts, ...mergedOrders.conflicts, ...mergedProspects.conflicts];
+    clients = mergedClients.result;
+    orders = mergedOrders.result;
+    prospects = mergedProspects.result;
+    await persist('clients', clients);
+    await persist('orders', orders);
+    await persist('prospects', prospects);
     await subirDatosPropios();
     await leerOverridesPropios();
     lastSyncAt = Date.now();
+    renderAll();
+    mostrarResumenConflictos(conflicts);
   }catch(e){ console.warn('Error sincronizando', e); }
   renderAll();
   actualizarUISync();
