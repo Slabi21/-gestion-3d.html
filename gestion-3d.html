@@ -943,6 +943,7 @@
 let clients = [];
 let orders = [];
 let prospects = [];
+let deletedRecords = { clients:{}, orders:{}, prospects:{} };
 
 /* =========================================================
    FIREBASE — CONFIGURACIÓN REQUERIDA (ver también el sheet
@@ -1107,6 +1108,9 @@ async function loadAll(){
     const p = localStorage.getItem(STORAGE_PREFIX + 'prospects');
     prospects = p ? JSON.parse(p) : [];
   }catch(e){ prospects = []; }
+  try{
+    deletedRecords = normalizarEliminaciones(JSON.parse(localStorage.getItem(STORAGE_PREFIX + 'deletedRecords') || '{}'));
+  }catch(e){ deletedRecords = { clients:{}, orders:{}, prospects:{} }; }
 
   const normClients = normalizarRegistros(clients, 'clients');
   const normOrders = normalizarRegistros(orders, 'orders');
@@ -1168,6 +1172,46 @@ function normalizarRegistros(arr, tipo){
   return { out, changed };
 }
 
+function normalizarEliminaciones(data){
+  const out = { clients:{}, orders:{}, prospects:{} };
+  ['clients','orders','prospects'].forEach(tipo=>{
+    const source = data?.[tipo] || {};
+    Object.entries(source).forEach(([id, info])=>{
+      const deletedAt = Number(info?.deletedAt || info) || 0;
+      if(deletedAt) out[tipo][id] = { deletedAt, deletedBy: info?.deletedBy || 'legacy' };
+    });
+  });
+  return out;
+}
+
+function marcarEliminado(tipo, id){
+  if(!deletedRecords[tipo]) deletedRecords[tipo] = {};
+  deletedRecords[tipo][id] = { deletedAt: Date.now(), deletedBy: deviceId };
+}
+
+function combinarEliminaciones(locales, remotas){
+  const result = { clients:{}, orders:{}, prospects:{} };
+  ['clients','orders','prospects'].forEach(tipo=>{
+    const ids = new Set([
+      ...Object.keys(locales?.[tipo] || {}),
+      ...Object.keys(remotas?.[tipo] || {}),
+    ]);
+    ids.forEach(id=>{
+      const local = locales?.[tipo]?.[id];
+      const remoto = remotas?.[tipo]?.[id];
+      const elegido = (Number(local?.deletedAt) || 0) >= (Number(remoto?.deletedAt) || 0) ? local : remoto;
+      if(elegido?.deletedAt) result[tipo][id] = elegido;
+    });
+  });
+  return result;
+}
+
+function registroEliminado(record, tipo, eliminaciones){
+  const deletedAt = Number(eliminaciones?.[tipo]?.[record?.id]?.deletedAt) || 0;
+  const updatedAt = Number(record?.updatedAt) || Number(record?.createdAt) || 0;
+  return deletedAt >= updatedAt;
+}
+
 function registroComparable(record, tipo){
   const fields = SYNC_FIELDS[tipo] || [];
   const data = {};
@@ -1198,9 +1242,9 @@ function marcaTiempoConflicto(ts, otroTs){
   return d.toLocaleDateString('es-AR', {day:'2-digit', month:'2-digit', year:'numeric'});
 }
 
-function combinarRegistros(locales, remotos, tipo){
-  const localMap = new Map((locales||[]).map(r=>[r.id,r]));
-  const remoteMap = new Map((remotos||[]).map(r=>[r.id,r]));
+function combinarRegistros(locales, remotos, tipo, eliminaciones){
+  const localMap = new Map((locales||[]).filter(r=>!registroEliminado(r,tipo,eliminaciones)).map(r=>[r.id,r]));
+  const remoteMap = new Map((remotos||[]).filter(r=>!registroEliminado(r,tipo,eliminaciones)).map(r=>[r.id,r]));
   const ids = new Set([...localMap.keys(), ...remoteMap.keys()]);
   const result = [];
   const conflicts = [];
@@ -1374,7 +1418,9 @@ async function saveCliente(){
   const prospectoOrigenId = document.getElementById('clienteProspectoOrigen').value;
   if(prospectoOrigenId){
     prospects = prospects.filter(p=>p.id!==prospectoOrigenId);
+    marcarEliminado('prospects', prospectoOrigenId);
     await persist('prospects', prospects);
+    await persist('deletedRecords', deletedRecords);
     renderProspects();
   }
 
@@ -1415,7 +1461,9 @@ async function deleteCliente(){
   if(casaMatrizModo){ alert('Casa matriz no elimina clientes, solo edita y reasigna. La baja la hace el vendedor desde su propia app.'); return; }
   if(!confirm('¿Eliminar este cliente? Sus pedidos quedarán sin cliente asignado.')) return;
   clients = clients.filter(c=>c.id!==id);
+  marcarEliminado('clients', id);
   await persist('clients', clients);
+  await persist('deletedRecords', deletedRecords);
   renderClients();
   closeSheet('sheetCliente');
   closeSheet('sheetClienteDetalle');
@@ -1734,7 +1782,9 @@ async function deletePedido(){
   }
   if(!confirm('¿Eliminar este pedido? No se puede deshacer.')) return;
   orders = orders.filter(o=>o.id!==id);
+  marcarEliminado('orders', id);
   await persist('orders', orders);
+  await persist('deletedRecords', deletedRecords);
   renderOrders();
   renderClients();
   closeSheet('sheetPedido');
@@ -1880,7 +1930,9 @@ async function deleteProspecto(id){
   if(!id) return;
   if(!confirm('¿Eliminar este posible cliente?')) return;
   prospects = prospects.filter(p=>p.id!==id);
+  marcarEliminado('prospects', id);
   await persist('prospects', prospects);
+  await persist('deletedRecords', deletedRecords);
   renderProspects();
   closeSheet('sheetProspecto');
 }
@@ -2276,9 +2328,11 @@ async function resolverMiRol(){
       clients = [];
       orders = [];
       prospects = [];
+      deletedRecords = { clients:{}, orders:{}, prospects:{} };
       await persist('clients', clients);
       await persist('orders', orders);
       await persist('prospects', prospects);
+      await persist('deletedRecords', deletedRecords);
     }
     localStorage.setItem(ACTIVE_UID_KEY, uid);
     const ref = fbSdk.doc(fbDb, 'usuarios', uid);
@@ -2336,7 +2390,7 @@ async function subirDatosPropios(){
   const ref = fbSdk.doc(fbDb, 'vendedores', fbAuth.currentUser.uid);
   await fbSdk.setDoc(ref, {
     nombre: vendorName || (fbAuth.currentUser.email||'').split('@')[0],
-    clients, orders, prospects,
+    clients, orders, prospects, deletedRecords,
     updatedAt: Date.now()
   });
 }
@@ -2364,9 +2418,11 @@ async function restaurarDesdeNube(pedirConfirmacion){
   clients = Array.isArray(data.clients) ? data.clients : [];
   orders = Array.isArray(data.orders) ? data.orders : [];
   prospects = Array.isArray(data.prospects) ? data.prospects : [];
+  deletedRecords = normalizarEliminaciones(data.deletedRecords);
   await persist('clients', clients);
   await persist('orders', orders);
   await persist('prospects', prospects);
+  await persist('deletedRecords', deletedRecords);
   renderAll();
   return true;
 }
@@ -2411,6 +2467,7 @@ window.copiarDatosVendedorViejo = async function(){
       clients: Array.isArray(data.clients) ? data.clients : [],
       orders: Array.isArray(data.orders) ? data.orders : [],
       prospects: Array.isArray(data.prospects) ? data.prospects : [],
+      deletedRecords: normalizarEliminaciones(data.deletedRecords),
       updatedAt: Date.now()
     });
     alert('Listo. Ahora esa persona puede tocar "Restaurar mis datos desde la nube" en Opciones de su celular para traerlos.');
@@ -2433,9 +2490,11 @@ async function sincronizarVendedor(){
     const remoteClients = normalizarRegistros(remoto.clients, 'clients').out;
     const remoteOrders = normalizarRegistros(remoto.orders, 'orders').out;
     const remoteProspects = normalizarRegistros(remoto.prospects, 'prospects').out;
-    const mergedClients = combinarRegistros(clients, remoteClients, 'clients');
-    const mergedOrders = combinarRegistros(orders, remoteOrders, 'orders');
-    const mergedProspects = combinarRegistros(prospects, remoteProspects, 'prospects');
+    const remoteDeleted = normalizarEliminaciones(remoto.deletedRecords);
+    deletedRecords = combinarEliminaciones(deletedRecords, remoteDeleted);
+    const mergedClients = combinarRegistros(clients, remoteClients, 'clients', deletedRecords);
+    const mergedOrders = combinarRegistros(orders, remoteOrders, 'orders', deletedRecords);
+    const mergedProspects = combinarRegistros(prospects, remoteProspects, 'prospects', deletedRecords);
     const conflicts = [...mergedClients.conflicts, ...mergedOrders.conflicts, ...mergedProspects.conflicts];
     clients = mergedClients.result;
     orders = mergedOrders.result;
@@ -2443,6 +2502,7 @@ async function sincronizarVendedor(){
     await persist('clients', clients);
     await persist('orders', orders);
     await persist('prospects', prospects);
+    await persist('deletedRecords', deletedRecords);
     await subirDatosPropios();
     await leerOverridesPropios();
     lastSyncAt = Date.now();
@@ -2717,7 +2777,7 @@ function exportarDatos(){
     app: 'taller3d',
     version: 1,
     exportedAt: new Date().toISOString(),
-    clients, orders, prospects
+    clients, orders, prospects, deletedRecords
   };
   const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
   const url = URL.createObjectURL(blob);
@@ -2751,9 +2811,11 @@ async function importarDatos(event){
     clients = Array.isArray(data.clients) ? data.clients : [];
     orders = Array.isArray(data.orders) ? data.orders : [];
     prospects = Array.isArray(data.prospects) ? data.prospects : [];
+    deletedRecords = { clients:{}, orders:{}, prospects:{} };
     await persist('clients', clients);
     await persist('orders', orders);
     await persist('prospects', prospects);
+    await persist('deletedRecords', deletedRecords);
     renderAll();
     status.textContent = `✅ Importado: ${resumen}`;
     status.style.color = 'var(--ok)';
