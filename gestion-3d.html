@@ -1773,8 +1773,6 @@ function openPedidoForm(id){
   document.getElementById('productosList').innerHTML = '';
   if(o && o.items && o.items.length){
     o.items.forEach(p => addProductRow(p));
-  }else{
-    addProductRow(); // arranca con una fila vacía lista para cargar
   }
   recalcTotal();
   const btnEliminar = document.getElementById('btnEliminarPedidoForm');
