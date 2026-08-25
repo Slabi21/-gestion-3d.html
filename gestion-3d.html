@@ -334,6 +334,9 @@
     margin-bottom: 8px;
   }
   .product-row-fields{ flex:1; display:flex; flex-direction:column; gap:6px; }
+  .product-row.product-completed .product-name-input{ text-decoration:line-through; color:var(--ink-dim); }
+  .product-complete-toggle{ display:flex; align-items:center; gap:6px; color:var(--ink-dim); font-size:12px; }
+  .product-complete-toggle input{ width:auto; accent-color:var(--accent); }
   .product-row-line2{ display:flex; gap:6px; }
   .product-name-input{
     width:100%; background: var(--bg); border:1px solid var(--line);
@@ -1527,7 +1530,8 @@ async function toggleItemCompletado(orderId, index, checked){
   if(!order || !Array.isArray(order.items) || !order.items[index]) return;
   const items = order.items.map((item, i)=> i === index ? { ...item, completado: checked } : item);
   await guardarOverrideCasaMatriz('orders', orderId, { items });
-  if(currentDetalleId) openClienteDetalle(currentDetalleId);
+  const detalleAbierto = document.getElementById('sheetClienteDetalle')?.classList.contains('active');
+  if(currentDetalleId && detalleAbierto) openClienteDetalle(currentDetalleId);
 }
 
 function editCliente(){
@@ -1691,6 +1695,10 @@ function addProductRow(producto){
   wrap.dataset.rowId = rowId;
   wrap.dataset.itemId = itemId;
   wrap.dataset.completado = producto?.completado ? 'true' : 'false';
+  if(producto?.completado) wrap.classList.add('product-completed');
+  const completionControl = casaMatrizModo
+    ? `<label class="product-complete-toggle"><input type="checkbox" ${producto?.completado ? 'checked' : ''} onchange="cambiarCompletadoEnFormulario(this)"> Ítem terminado</label>`
+    : '';
   wrap.innerHTML = `
     <div class="product-row-fields">
       <input class="product-name-input" placeholder="Ej: Maceta hexagonal" value="${producto ? escapeAttr(producto.nombre) : ''}" oninput="recalcTotal()">
@@ -1699,11 +1707,23 @@ function addProductRow(producto){
         <input class="product-price-input" type="number" min="0" inputmode="decimal" placeholder="Precio unitario" value="${producto && producto.precio != null ? producto.precio : ''}" oninput="recalcTotal()">
         <input class="product-days-input" type="number" min="0" inputmode="decimal" title="Días de impresión" placeholder="Días" value="${producto && producto.diasImpresion != null ? producto.diasImpresion : ''}">
       </div>
+      ${completionControl}
     </div>
     <button type="button" class="remove-product-btn" onclick="removeProductRow('${rowId}')">✕</button>
   `;
   document.getElementById('productosList').appendChild(wrap);
   recalcTotal();
+}
+function cambiarCompletadoEnFormulario(checkbox){
+  const row = checkbox.closest('.product-row');
+  if(!row) return;
+  row.dataset.completado = checkbox.checked ? 'true' : 'false';
+  row.classList.toggle('product-completed', checkbox.checked);
+  const orderId = document.getElementById('pedidoId').value;
+  if(orderId && casaMatrizModo){
+    const index = [...document.querySelectorAll('#productosList .product-row')].indexOf(row);
+    toggleItemCompletado(orderId, index, checkbox.checked);
+  }
 }
 function removeProductRow(rowId){
   const el = document.querySelector(`.product-row[data-row-id="${rowId}"]`);
