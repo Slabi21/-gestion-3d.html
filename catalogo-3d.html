@@ -315,6 +315,17 @@
     content:""; position:absolute; inset:0;
     background:radial-gradient(circle at center,rgba(255,122,41,.18),transparent 58%);
   }
+  .detalle-video-preview{ cursor:pointer; }
+  .detalle-video-preview img{
+    position:absolute; inset:0; width:100%; height:100%; object-fit:cover;
+    opacity:.82; transition:opacity .2s ease, transform .3s ease;
+  }
+  .detalle-video-preview:hover img{ opacity:.96; transform:scale(1.025); }
+  .detalle-video-overlay{
+    position:relative; z-index:2; display:flex; flex-direction:column; align-items:center; gap:10px;
+    color:#fff; font-size:.8125rem; font-weight:600; text-align:center;
+    text-shadow:0 1px 5px rgba(0,0,0,.8); padding:24px;
+  }
   .detalle-video-slide iframe{ width:100%; height:100%; border:0; position:relative; z-index:1; }
   .detalle-video-placeholder{
     position:relative; z-index:1; display:flex; flex-direction:column; align-items:center; gap:10px;
@@ -875,6 +886,9 @@ function extraerYoutubeId(valor){
 }
 function youtubeEmbedUrl(id){
   return `https://www.youtube-nocookie.com/embed/${encodeURIComponent(id)}?rel=0`;
+}
+function youtubeThumbnailUrl(id){
+  return `https://i.ytimg.com/vi/${encodeURIComponent(id)}/hqdefault.jpg`;
 }
 
 // Número de WhatsApp del negocio para el botón "Consultar" del detalle de
@@ -1697,7 +1711,7 @@ window.abrirDetalleProducto = function(id){
     ? fotos.map(url => `<img src="${escapeAttr(url)}" alt="${escapeAttr(p.nombre)}" loading="lazy" decoding="async" onerror="this.onerror=null;this.src='${DEFAULT_PHOTO}';" onclick="abrirZoomFoto('${escapeAttr(url)}')">`)
     : [`<img src="${DEFAULT_PHOTO}" alt="${escapeAttr(p.nombre)}" onclick="abrirZoomFoto('${DEFAULT_PHOTO}')">`];
   if(videoId){
-    mediaFotos.push(`<div class="detalle-video-slide" role="button" tabindex="0" onclick="activarVideoYoutube(this, '${escapeAttr(videoId)}')" onkeydown="if(event.key==='Enter' || event.key===' '){event.preventDefault();activarVideoYoutube(this, '${escapeAttr(videoId)}')}" title="Reproducir video de YouTube"><div class="detalle-video-placeholder"><span class="play-icon">▶</span><span>Ver video en YouTube</span></div></div>`);
+    mediaFotos.push(`<div class="detalle-video-slide detalle-video-preview" role="button" tabindex="0" onclick="activarVideoYoutube(this, '${escapeAttr(videoId)}')" onkeydown="if(event.key==='Enter' || event.key===' '){event.preventDefault();activarVideoYoutube(this, '${escapeAttr(videoId)}')}" title="Reproducir video de YouTube"><img src="${youtubeThumbnailUrl(videoId)}" alt="Vista previa del video de ${escapeAttr(p.nombre)}" loading="lazy" onerror="this.style.display='none'"><div class="detalle-video-overlay"><span class="play-icon">▶</span><span>Ver video en YouTube</span></div></div>`);
   }
   galeria.innerHTML = mediaFotos.join('');
   galeria.scrollLeft = 0;
