@@ -1480,10 +1480,12 @@ function productoCardHtml(p, cat){
     <div class="product-card" onclick="abrirDetalleProducto('${p.id}')">
       ${nuevo ? `<div class="product-new-badge">${ICONO_CHISPA}Nuevo</div>` : ''}
       ${videoId ? '<span class="product-video-badge">▶ Video</span>' : ''}
-      ${editorUnlocked && permiteOrden ? `
+      ${editorUnlocked ? `
         <div class="product-edit-actions">
-          <button class="mini-btn mini-btn-sm" onclick="event.stopPropagation(); moverProductoOrden('${p.id}', '${escapeAttr(cat)}', -1)" title="Mover antes">↑</button>
-          <button class="mini-btn mini-btn-sm" onclick="event.stopPropagation(); moverProductoOrden('${p.id}', '${escapeAttr(cat)}', 1)" title="Mover después">↓</button>
+          ${permiteOrden ? `
+            <button class="mini-btn mini-btn-sm" onclick="event.stopPropagation(); moverProductoOrden('${p.id}', '${escapeAttr(cat)}', -1)" title="Mover antes">↑</button>
+            <button class="mini-btn mini-btn-sm" onclick="event.stopPropagation(); moverProductoOrden('${p.id}', '${escapeAttr(cat)}', 1)" title="Mover después">↓</button>
+          ` : ''}
           <button class="mini-btn" onclick="event.stopPropagation(); abrirProductoForm('${p.id}')" title="Editar">✎</button>
         </div>` : ''}
       <div class="product-photo">
