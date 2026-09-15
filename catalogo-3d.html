@@ -107,6 +107,14 @@
   .product-grid{
     display:grid; grid-template-columns: repeat(auto-fill, minmax(148px, 1fr)); gap:12px;
   }
+  .product-grid-featured{
+    display:flex; overflow-x:auto; gap:12px; padding:2px 2px 6px;
+    scroll-snap-type:x proximity; scrollbar-width:none;
+  }
+  .product-grid-featured::-webkit-scrollbar{ display:none; }
+  .product-grid-featured .product-card{
+    flex:0 0 min(72vw, 220px); scroll-snap-align:start;
+  }
   .product-card{
     background: var(--surface); border:none; border-radius:16px; overflow:hidden;
     display:flex; flex-direction:column; position:relative; cursor:pointer;
@@ -118,6 +126,14 @@
     position:relative;
   }
   .product-photo img{ width:100%; height:100%; object-fit:cover; display:block; }
+  .product-video-badge{
+    position:absolute; top:9px; left:9px; z-index:2;
+    display:inline-flex; align-items:center; gap:4px;
+    padding:5px 8px; border-radius:999px;
+    left:auto; right:9px;
+    background:rgba(5,6,8,.72); color:#fff; font-size:.6875rem; font-weight:700;
+    backdrop-filter:blur(3px);
+  }
   .product-photo .placeholder{ color: var(--ink-dim); font-size:0.6875rem; text-align:center; padding:8px; }
   .product-info{ padding:11px 12px 13px; display:flex; flex-direction:column; gap:5px; }
   .product-name{
@@ -289,6 +305,24 @@
   .detalle-galeria img{
     flex:0 0 100%; width:100%; aspect-ratio:1/1; object-fit:cover; scroll-snap-align:center; display:block;
     scroll-snap-stop: always;
+  }
+  .detalle-video-slide{
+    flex:0 0 100%; aspect-ratio:1/1; scroll-snap-align:center; scroll-snap-stop:always;
+    display:flex; align-items:center; justify-content:center; position:relative;
+    background:linear-gradient(135deg,#20242a,#101216); overflow:hidden;
+  }
+  .detalle-video-slide::before{
+    content:""; position:absolute; inset:0;
+    background:radial-gradient(circle at center,rgba(255,122,41,.18),transparent 58%);
+  }
+  .detalle-video-slide iframe{ width:100%; height:100%; border:0; position:relative; z-index:1; }
+  .detalle-video-placeholder{
+    position:relative; z-index:1; display:flex; flex-direction:column; align-items:center; gap:10px;
+    color:var(--ink); font-size:.8125rem; text-align:center; padding:24px;
+  }
+  .detalle-video-placeholder .play-icon{
+    width:54px; height:54px; border-radius:50%; display:flex; align-items:center; justify-content:center;
+    background:#ff0033; color:#fff; font-size:1.3rem; padding-left:3px;
   }
   .detalle-galeria-arrow{
     position:absolute; top:50%; transform:translateY(-50%); z-index:3;
@@ -681,6 +715,11 @@
       <label>Descripción</label>
       <textarea id="pDescripcion" rows="3" placeholder="Detalle libre: materiales, medidas, variantes, colores disponibles, etc."></textarea>
     </div>
+    <div class="field">
+      <label>Video de YouTube (opcional)</label>
+      <input id="pYoutubeUrl" type="url" inputmode="url" placeholder="https://youtu.be/...">
+      <span class="field-hint">Pegá un enlace de YouTube. Se mostrará como una diapositiva adicional en el detalle del producto.</span>
+    </div>
     <div class="form-error" id="productoError"></div>
     <div class="btn-row">
       <button class="btn btn-primary" onclick="guardarProducto()">Guardar</button>
@@ -808,10 +847,34 @@ const STORAGE_PREFIX = 'catalogo3d_';
 // nunca cuentan como nuevos.
 const DIAS_NUEVO_KEY = STORAGE_PREFIX + 'diasNuevo';
 let diasNuevo = Number(localStorage.getItem(DIAS_NUEVO_KEY)) || 14;
+const NOVEDADES_FILTER = '__novedades__';
 function esNuevo(p){
   if(!p.createdAt) return false;
   const dias = (Date.now() - p.createdAt) / (1000 * 60 * 60 * 24);
   return dias <= diasNuevo;
+}
+
+// El editor recibe un enlace de YouTube, pero solo guarda el ID. Así nunca
+// se inserta HTML arbitrario en el catálogo y también se aceptan enlaces de
+// watch, youtu.be, shorts y embed.
+function extraerYoutubeId(valor){
+  const raw = String(valor || '').trim();
+  if(!raw) return '';
+  if(/^[A-Za-z0-9_-]{6,20}$/.test(raw)) return raw;
+  try{
+    const url = new URL(raw);
+    const host = url.hostname.toLowerCase().replace(/^www\./, '');
+    if(host === 'youtu.be') return url.pathname.slice(1).split('/')[0] || '';
+    if(host === 'youtube.com' || host === 'm.youtube.com'){
+      if(url.pathname === '/watch') return url.searchParams.get('v') || '';
+      const partes = url.pathname.split('/').filter(Boolean);
+      if(partes[0] === 'shorts' || partes[0] === 'embed') return partes[1] || '';
+    }
+  }catch(e){ /* enlace inválido: el formulario lo informará */ }
+  return '';
+}
+function youtubeEmbedUrl(id){
+  return `https://www.youtube-nocookie.com/embed/${encodeURIComponent(id)}?rel=0`;
 }
 
 // Número de WhatsApp del negocio para el botón "Consultar" del detalle de
@@ -1156,12 +1219,11 @@ const ICONO_CHISPA = '<svg viewBox="0 0 24 24" width="11" height="11" fill="curr
 function renderFiltroCategorias(){
   const el = document.getElementById('catFilterBar');
   const cats = [...new Set(productos.flatMap(categoriasDe))].sort((a,b)=>a.localeCompare(b,'es'));
-  if(cats.length === 0){
-    el.innerHTML = '';
-    actualizarFlechaCategorias();
-    return;
-  }
-  const chips = [{ val:'', label:'Todos' }, ...cats.map(c=>({val:c, label:c}))];
+  const chips = [
+    { val:NOVEDADES_FILTER, label:'Novedades' },
+    { val:'', label:'Todos' },
+    ...cats.map(c=>({val:c, label:c}))
+  ];
   el.innerHTML = chips.map(c => `
     <button type="button" class="cat-filter-chip ${filtroCategoria===c.val?'active':''}" onclick="filtrarPorCategoria('${escapeAttr(c.val)}')">${escapeHtml(c.label)}</button>
   `).join('');
@@ -1205,7 +1267,9 @@ function renderCatalogo(){
   const q = (document.getElementById('buscador').value || '').toLowerCase().trim();
 
   let lista = productos;
-  if(filtroCategoria){
+  if(filtroCategoria === NOVEDADES_FILTER){
+    lista = lista.filter(esNuevo);
+  }else if(filtroCategoria){
     lista = lista.filter(p => categoriasDe(p).includes(filtroCategoria));
   }
   if(q){
@@ -1214,8 +1278,8 @@ function renderCatalogo(){
     );
   }
 
-  document.getElementById('subtitulo').textContent = productos.length
-    ? `${productos.length} producto${productos.length===1?'':'s'} en el catálogo`
+  document.getElementById('subtitulo').textContent = lista.length
+    ? `${lista.length} producto${lista.length===1?'':'s'} visibles`
     : 'Productos y precios';
 
   if(!primerSnapshotLlegado){
@@ -1227,41 +1291,44 @@ function renderCatalogo(){
     return;
   }
   if(lista.length === 0){
-    cont.innerHTML = '<div class="empty-state">No hay productos que coincidan con la búsqueda.</div>';
+    cont.innerHTML = filtroCategoria === NOVEDADES_FILTER
+      ? '<div class="empty-state"><div class="big">✨</div>Todavía no hay novedades cargadas.</div>'
+      : '<div class="empty-state">No hay productos que coincidan con la búsqueda.</div>';
     return;
   }
 
-  const grupos = {};
-  lista.forEach(p => {
-    // Si hay un filtro de categoría activo, ya sabemos que el producto
-    // pertenece a esa categoría (se filtró arriba): lo agrupamos SOLO ahí,
-    // no en todas sus categorías, para no duplicar la sección de otra
-    // categoría a la que también pertenezca.
-    const catList = filtroCategoria ? [filtroCategoria] : (categoriasDe(p).length ? categoriasDe(p) : ['Sin categoría']);
-    catList.forEach(cat => {
-      (grupos[cat] = grupos[cat] || []).push(p);
-    });
-  });
-  const nombresCats = Object.keys(grupos).sort((a,b)=>{
-    if(a === 'Sin categoría') return 1;
-    if(b === 'Sin categoría') return -1;
-    return a.localeCompare(b, 'es');
-  });
-
-  cont.innerHTML = nombresCats.map(cat => {
-    const items = grupos[cat].sort((a,b)=>{
+  const ordenar = (items, usarOrdenManual) => [...items].sort((a,b)=>{
+    if(usarOrdenManual){
       const oa = a.orden ?? Infinity, ob = b.orden ?? Infinity;
       if(oa !== ob) return oa - ob;
-      return (a.nombre||'').localeCompare(b.nombre||'', 'es');
-    });
-    return `
-      <div class="cat-section">
-        <div class="cat-title">${escapeHtml(cat)} <span class="count">${items.length}</span></div>
-        <div class="product-grid">
-          ${items.map(p => productoCardHtml(p, cat)).join('')}
-        </div>
-      </div>`;
-  }).join('');
+    }
+    return (a.nombre||'').localeCompare(b.nombre||'', 'es');
+  });
+  const seccion = (titulo, items, claseGrid, claveOrden) => `
+    <div class="cat-section">
+      <div class="cat-title">${escapeHtml(titulo)} <span class="count">${items.length}</span></div>
+      <div class="${claseGrid}">
+        ${items.map(p => productoCardHtml(p, claveOrden)).join('')}
+      </div>
+    </div>`;
+
+  if(filtroCategoria === NOVEDADES_FILTER){
+    cont.innerHTML = seccion('Novedades', ordenar(lista, false), 'product-grid', NOVEDADES_FILTER);
+    return;
+  }
+  if(filtroCategoria){
+    cont.innerHTML = seccion(filtroCategoria, ordenar(lista, true), 'product-grid', filtroCategoria);
+    return;
+  }
+
+  // Vista inicial: las novedades tienen protagonismo y debajo queda todo el
+  // catálogo en una sola grilla, sin repetir productos por sus categorías.
+  const novedades = q ? lista.filter(esNuevo) : productos.filter(esNuevo);
+  const todos = q ? lista : productos;
+  const partes = [];
+  if(novedades.length) partes.push(seccion('Novedades', ordenar(novedades, false), 'product-grid-featured', NOVEDADES_FILTER));
+  partes.push(seccion('Todos los productos', ordenar(todos, false), 'product-grid', '__todos__'));
+  cont.innerHTML = partes.join('');
 }
 
 function primeraFoto(p){
@@ -1367,7 +1434,7 @@ window.renderCarritoSheet = function(){
     const subtotal = item.precio * item.cantidad;
     return `
       <div class="cart-item">
-        <div class="cart-item-photo"><img src="${escapeAttr(fotoSrc)}" onerror="this.onerror=null;this.src='${DEFAULT_PHOTO}';"></div>
+        <div class="cart-item-photo"><img src="${escapeAttr(fotoSrc)}" loading="lazy" decoding="async" onerror="this.onerror=null;this.src='${DEFAULT_PHOTO}';"></div>
         <div class="cart-item-info">
           <div class="cart-item-name">${escapeHtml(item.nombre)}</div>
           <div class="cart-item-price">$${item.precio.toLocaleString('es-AR')} c/u · subtotal $${subtotal.toLocaleString('es-AR')}</div>
@@ -1405,12 +1472,15 @@ function productoCardHtml(p, cat){
   const precio = Number(p.precio) || 0;
   const dias = Number(p.diasImpresion) || 0;
   const fotoSrc = primeraFoto(p) || DEFAULT_PHOTO;
-  const foto = `<img src="${escapeAttr(fotoSrc)}" alt="${escapeAttr(p.nombre)}" onerror="this.onerror=null;this.src='${DEFAULT_PHOTO}';">`;
+  const foto = `<img src="${escapeAttr(fotoSrc)}" alt="${escapeAttr(p.nombre)}" loading="lazy" decoding="async" onerror="this.onerror=null;this.src='${DEFAULT_PHOTO}';">`;
   const nuevo = esNuevo(p);
+  const videoId = p.youtubeVideoId || extraerYoutubeId(p.youtubeUrl);
+  const permiteOrden = cat !== '__todos__' && cat !== NOVEDADES_FILTER;
   return `
     <div class="product-card" onclick="abrirDetalleProducto('${p.id}')">
       ${nuevo ? `<div class="product-new-badge">${ICONO_CHISPA}Nuevo</div>` : ''}
-      ${editorUnlocked ? `
+      ${videoId ? '<span class="product-video-badge">▶ Video</span>' : ''}
+      ${editorUnlocked && permiteOrden ? `
         <div class="product-edit-actions">
           <button class="mini-btn mini-btn-sm" onclick="event.stopPropagation(); moverProductoOrden('${p.id}', '${escapeAttr(cat)}', -1)" title="Mover antes">↑</button>
           <button class="mini-btn mini-btn-sm" onclick="event.stopPropagation(); moverProductoOrden('${p.id}', '${escapeAttr(cat)}', 1)" title="Mover después">↓</button>
@@ -1597,6 +1667,11 @@ window.irAFotoDetalle = function(i){
 
 let detalleProductoActualId = null;
 
+window.activarVideoYoutube = function(el, id){
+  if(!el || !id) return;
+  el.outerHTML = `<div class="detalle-video-slide"><iframe src="${youtubeEmbedUrl(id)}" title="Video de YouTube" loading="lazy" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe></div>`;
+};
+
 window.abrirDetalleProducto = function(id){
   const p = productos.find(x => x.id === id);
   if(!p) return;
@@ -1614,17 +1689,22 @@ window.abrirDetalleProducto = function(id){
   sheetEl.style.maxHeight = `calc(100vh - ${topbarAlto}px)`;
 
   const fotos = (p.fotos && p.fotos.length) ? p.fotos : (p.fotoUrl ? [p.fotoUrl] : []);
+  const videoId = p.youtubeVideoId || extraerYoutubeId(p.youtubeUrl);
   const galeria = document.getElementById('detalleGaleria');
-  galeria.innerHTML = fotos.length
-    ? fotos.map(url => `<img src="${escapeAttr(url)}" alt="${escapeAttr(p.nombre)}" onerror="this.onerror=null;this.src='${DEFAULT_PHOTO}';" onclick="abrirZoomFoto('${escapeAttr(url)}')">`).join('')
-    : `<img src="${DEFAULT_PHOTO}" alt="${escapeAttr(p.nombre)}" onclick="abrirZoomFoto('${DEFAULT_PHOTO}')">`;
+  const mediaFotos = fotos.length
+    ? fotos.map(url => `<img src="${escapeAttr(url)}" alt="${escapeAttr(p.nombre)}" loading="lazy" decoding="async" onerror="this.onerror=null;this.src='${DEFAULT_PHOTO}';" onclick="abrirZoomFoto('${escapeAttr(url)}')">`)
+    : [`<img src="${DEFAULT_PHOTO}" alt="${escapeAttr(p.nombre)}" onclick="abrirZoomFoto('${DEFAULT_PHOTO}')">`];
+  if(videoId){
+    mediaFotos.push(`<div class="detalle-video-slide" role="button" tabindex="0" onclick="activarVideoYoutube(this, '${escapeAttr(videoId)}')" onkeydown="if(event.key==='Enter' || event.key===' '){event.preventDefault();activarVideoYoutube(this, '${escapeAttr(videoId)}')}" title="Reproducir video de YouTube"><div class="detalle-video-placeholder"><span class="play-icon">▶</span><span>Ver video en YouTube</span></div></div>`);
+  }
+  galeria.innerHTML = mediaFotos.join('');
   galeria.scrollLeft = 0;
 
-  detalleFotosCount = fotos.length;
+  detalleFotosCount = mediaFotos.length;
   const dotsEl = document.getElementById('detalleDots');
-  if(fotos.length > 1){
+  if(detalleFotosCount > 1){
     dotsEl.style.display = 'flex';
-    dotsEl.innerHTML = fotos.map((_, i) => `<span class="detalle-dot${i === 0 ? ' active' : ''}" onclick="irAFotoDetalle(${i})"></span>`).join('');
+    dotsEl.innerHTML = mediaFotos.map((_, i) => `<span class="detalle-dot${i === 0 ? ' active' : ''}" onclick="irAFotoDetalle(${i})"></span>`).join('');
   }else{
     dotsEl.style.display = 'none';
     dotsEl.innerHTML = '';
@@ -1826,6 +1906,7 @@ window.abrirProductoForm = function(id){
   document.getElementById('pFotoUrlManual').value = '';
   fotosEdit = (p?.fotos && p.fotos.length) ? [...p.fotos] : (p?.fotoUrl ? [p.fotoUrl] : []);
   renderFotosEdit();
+  document.getElementById('pYoutubeUrl').value = p?.youtubeUrl || (p?.youtubeVideoId ? `https://youtu.be/${p.youtubeVideoId}` : '');
   document.getElementById('btnEliminarProducto').style.display = id ? '' : 'none';
   openSheet('sheetProducto');
 };
@@ -1838,6 +1919,12 @@ window.guardarProducto = async function(){
   if(pendiente && !categoriasEdit.some(c => c.toLowerCase() === pendiente.toLowerCase())){
     categoriasEdit.push(pendiente);
   }
+  const youtubeUrl = document.getElementById('pYoutubeUrl').value.trim();
+  const youtubeVideoId = extraerYoutubeId(youtubeUrl);
+  if(youtubeUrl && !youtubeVideoId){
+    document.getElementById('productoError').textContent = 'Pegá un enlace válido de YouTube.';
+    return;
+  }
   const id = document.getElementById('productoId').value || uid();
   const data = {
     nombre,
@@ -1849,6 +1936,8 @@ window.guardarProducto = async function(){
     descripcion: document.getElementById('pDescripcion').value.trim(),
     fotos: fotosEdit.slice(),
     fotoUrl: fotosEdit[0] || '',
+    youtubeUrl: youtubeVideoId ? youtubeUrl : '',
+    youtubeVideoId: youtubeVideoId || '',
     updatedAt: Date.now(),
   };
   try{
