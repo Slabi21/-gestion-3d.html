@@ -885,7 +885,7 @@ function extraerYoutubeId(valor){
   return '';
 }
 function youtubeEmbedUrl(id){
-  return `https://www.youtube-nocookie.com/embed/${encodeURIComponent(id)}?rel=0`;
+  return `https://www.youtube-nocookie.com/embed/${encodeURIComponent(id)}?autoplay=1&playsinline=1&rel=0`;
 }
 function youtubeThumbnailUrl(id){
   return `https://i.ytimg.com/vi/${encodeURIComponent(id)}/hqdefault.jpg`;
@@ -1093,6 +1093,9 @@ window.openSheet = id => {
 window.closeSheet = id => {
   document.getElementById(id).classList.remove('active');
   if(id === 'sheetDetalle'){
+    const galeria = document.getElementById('detalleGaleria');
+    if(galeria) galeria.innerHTML = '';
+    detalleFotosCount = 0;
     detalleProductoActualId = null;
     if(history.replaceState) history.replaceState(null, '', location.pathname + location.search);
   }
